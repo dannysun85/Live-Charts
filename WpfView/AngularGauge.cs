@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ using System.Windows.Shapes;
 using System.Linq;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
+using LiveCharts.Helpers;
 using LiveCharts.Wpf.Points;
 
 namespace LiveCharts.Wpf
@@ -40,9 +41,12 @@ namespace LiveCharts.Wpf
     /// </summary>
     public class AngularGauge : UserControl
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AngularGauge"/> class.
+        /// </summary>
         public AngularGauge()
         {
-            Canvas = new Canvas { ClipToBounds = true};
+            Canvas = new Canvas();
             Content = Canvas;
 
             StickRotateTransform = new RotateTransform(180);
@@ -80,6 +84,8 @@ namespace LiveCharts.Wpf
                 IsControlLaoded = true;
                 Draw();
             };
+
+            Slices = new Dictionary<AngularSection, PieSlice>();
         }
 
         #region Properties
@@ -88,7 +94,11 @@ namespace LiveCharts.Wpf
         private Path Stick { get; set; }
         private RotateTransform StickRotateTransform { get; set; }
         private bool IsControlLaoded { get; set; }
+        private Dictionary<AngularSection, PieSlice> Slices { get; set; }
 
+        /// <summary>
+        /// The wedge property
+        /// </summary>
         public static readonly DependencyProperty WedgeProperty = DependencyProperty.Register(
             "Wedge", typeof (double), typeof (AngularGauge), 
             new PropertyMetadata(300d, Redraw));
@@ -101,9 +111,12 @@ namespace LiveCharts.Wpf
             set { SetValue(WedgeProperty, value); }
         }
 
+        /// <summary>
+        /// The ticks step property
+        /// </summary>
         public static readonly DependencyProperty TicksStepProperty = DependencyProperty.Register(
             "TicksStep", typeof (double), typeof (AngularGauge), 
-            new PropertyMetadata(2d, Redraw));
+            new PropertyMetadata(double.NaN, Redraw));
         /// <summary>
         /// Gets or sets the separation between every tick
         /// </summary>
@@ -113,9 +126,12 @@ namespace LiveCharts.Wpf
             set { SetValue(TicksStepProperty, value); }
         }
 
+        /// <summary>
+        /// The labels step property
+        /// </summary>
         public static readonly DependencyProperty LabelsStepProperty = DependencyProperty.Register(
             "LabelsStep", typeof (double), typeof (AngularGauge), 
-            new PropertyMetadata(10d, Redraw));
+            new PropertyMetadata(double.NaN, Redraw));
         /// <summary>
         /// Gets or sets the separation between every label
         /// </summary>
@@ -125,6 +141,9 @@ namespace LiveCharts.Wpf
             set { SetValue(LabelsStepProperty, value); }
         }
 
+        /// <summary>
+        /// From value property
+        /// </summary>
         public static readonly DependencyProperty FromValueProperty = DependencyProperty.Register(
             "FromValue", typeof (double), typeof (AngularGauge), 
             new PropertyMetadata(0d, Redraw));
@@ -137,6 +156,9 @@ namespace LiveCharts.Wpf
             set { SetValue(FromValueProperty, value); }
         }
 
+        /// <summary>
+        /// To value property
+        /// </summary>
         public static readonly DependencyProperty ToValueProperty = DependencyProperty.Register(
             "ToValue", typeof (double), typeof (AngularGauge), 
             new PropertyMetadata(100d, Redraw));
@@ -149,6 +171,9 @@ namespace LiveCharts.Wpf
             set { SetValue(ToValueProperty, value); }
         }
 
+        /// <summary>
+        /// The sections property
+        /// </summary>
         public static readonly DependencyProperty SectionsProperty = DependencyProperty.Register(
             "Sections", typeof (List<AngularSection>), typeof (AngularGauge), 
             new PropertyMetadata(default(SectionsCollection), Redraw));
@@ -161,6 +186,9 @@ namespace LiveCharts.Wpf
             set { SetValue(SectionsProperty, value); }
         }
 
+        /// <summary>
+        /// The value property
+        /// </summary>
         public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
             "Value", typeof (double), typeof (AngularGauge), 
             new PropertyMetadata(default(double), ValueChangedCallback));
@@ -173,6 +201,9 @@ namespace LiveCharts.Wpf
             set { SetValue(ValueProperty, value); }
         }
 
+        /// <summary>
+        /// The label formatter property
+        /// </summary>
         public static readonly DependencyProperty LabelFormatterProperty = DependencyProperty.Register(
             "LabelFormatter", typeof (Func<double, string>), typeof (AngularGauge), new PropertyMetadata(default(Func<double, string>)));
         /// <summary>
@@ -184,6 +215,9 @@ namespace LiveCharts.Wpf
             set { SetValue(LabelFormatterProperty, value); }
         }
 
+        /// <summary>
+        /// The disablea animations property
+        /// </summary>
         public static readonly DependencyProperty DisableaAnimationsProperty = DependencyProperty.Register(
             "DisableaAnimations", typeof (bool), typeof (AngularGauge), new PropertyMetadata(default(bool)));
         /// <summary>
@@ -195,6 +229,9 @@ namespace LiveCharts.Wpf
             set { SetValue(DisableaAnimationsProperty, value); }
         }
 
+        /// <summary>
+        /// The animations speed property
+        /// </summary>
         public static readonly DependencyProperty AnimationsSpeedProperty = DependencyProperty.Register(
             "AnimationsSpeed", typeof (TimeSpan), typeof (AngularGauge), new PropertyMetadata(default(TimeSpan)));
         /// <summary>
@@ -206,6 +243,9 @@ namespace LiveCharts.Wpf
             set { SetValue(AnimationsSpeedProperty, value); }
         }
 
+        /// <summary>
+        /// The ticks foreground property
+        /// </summary>
         public static readonly DependencyProperty TicksForegroundProperty = DependencyProperty.Register(
             "TicksForeground", typeof (Brush), typeof (AngularGauge), new PropertyMetadata(default(Brush)));
         /// <summary>
@@ -217,6 +257,9 @@ namespace LiveCharts.Wpf
             set { SetValue(TicksForegroundProperty, value); }
         }
 
+        /// <summary>
+        /// The sections inner radius property
+        /// </summary>
         public static readonly DependencyProperty SectionsInnerRadiusProperty = DependencyProperty.Register(
             "SectionsInnerRadius", typeof (double), typeof (AngularGauge), 
             new PropertyMetadata(0.94d, Redraw));
@@ -229,6 +272,9 @@ namespace LiveCharts.Wpf
             set { SetValue(SectionsInnerRadiusProperty, value); }
         }
 
+        /// <summary>
+        /// The needle fill property
+        /// </summary>
         public static readonly DependencyProperty NeedleFillProperty = DependencyProperty.Register(
             "NeedleFill", typeof (Brush), typeof (AngularGauge), new PropertyMetadata(default(Brush)));
         /// <summary>
@@ -240,18 +286,36 @@ namespace LiveCharts.Wpf
             set { SetValue(NeedleFillProperty, value); }
         }
 
+        /// <summary>
+        /// The labels effect property
+        /// </summary>
         public static readonly DependencyProperty LabelsEffectProperty = DependencyProperty.Register(
             "LabelsEffect", typeof (Effect), typeof (AngularGauge), new PropertyMetadata(default(Effect)));
 
+        /// <summary>
+        /// Gets or sets the labels effect.
+        /// </summary>
+        /// <value>
+        /// The labels effect.
+        /// </value>
         public Effect LabelsEffect
         {
             get { return (Effect) GetValue(LabelsEffectProperty); }
             set { SetValue(LabelsEffectProperty, value); }
         }
 
+        /// <summary>
+        /// The ticks stroke thickness property
+        /// </summary>
         public static readonly DependencyProperty TicksStrokeThicknessProperty = DependencyProperty.Register(
             "TicksStrokeThickness", typeof (double), typeof (AngularGauge), new PropertyMetadata(2d));
 
+        /// <summary>
+        /// Gets or sets the ticks stroke thickness.
+        /// </summary>
+        /// <value>
+        /// The ticks stroke thickness.
+        /// </value>
         public double TicksStrokeThickness
         {
             get { return (double) GetValue(TicksStrokeThicknessProperty); }
@@ -292,13 +356,13 @@ namespace LiveCharts.Wpf
             }
         }
 
-        private void Draw()
+        internal void Draw()
         {
             if (!IsControlLaoded) return;
 
             //No cache for you gauge :( kill and redraw please
             foreach (var child in Canvas.Children.Cast<UIElement>()
-                .Where(x => !Equals(x, Stick)).ToArray())
+                .Where(x => !Equals(x, Stick) && !(x is AngularSection) && !(x is PieSlice)).ToArray())
                 Canvas.Children.Remove(child);
 
             Wedge = Wedge > 360 ? 360 : (Wedge < 0 ? 0 : Wedge);
@@ -318,36 +382,34 @@ namespace LiveCharts.Wpf
             var ticksHj = d*.47;
             var labelsHj = d*.44;
 
-            if (Sections.Any())
+            foreach (var section in Sections)
             {
-                SectionsInnerRadius = SectionsInnerRadius > 1
-                    ? 1
-                    : (SectionsInnerRadius < 0
-                        ? 0
-                        : SectionsInnerRadius);
-                
-                foreach (var section in Sections)
-                {
-                    var start = LinearInterpolation(fromAlpha, toAlpha, 
-                        FromValue, ToValue, section.FromValue)+180;
-                    var end = LinearInterpolation(fromAlpha, toAlpha, 
-                        FromValue, ToValue, section.ToValue)+180;
+                PieSlice slice;
 
-                    var slice = new PieSlice
-                    {
-                        RotationAngle = start,
-                        WedgeAngle = end - start,
-                        Radius = d*.5,
-                        InnerRadius = d*.5*SectionsInnerRadius,
-                        Fill = section.Fill
-                    };
-                    Canvas.Children.Add(slice);
-                    Canvas.SetTop(slice, ActualHeight*.5);
-                    Canvas.SetLeft(slice, ActualWidth*.5);
+                section.Owner = this;
+
+                if (!Slices.TryGetValue(section, out slice))
+                {
+                    slice = new PieSlice();
+                    Slices[section] = slice;
                 }
+
+                var p = (Canvas)section.Parent;
+                if (p != null) p.Children.Remove(section);
+                Canvas.Children.Add(section);
+                var ps = (Canvas)slice.Parent;
+                if (ps != null) ps.Children.Remove(slice);
+                Canvas.Children.Add(slice);
             }
 
-            for (var i = FromValue; i <= ToValue; i += TicksStep)
+            UpdateSections();
+
+            var ts = double.IsNaN(TicksStep) ? DecideInterval((ToValue - FromValue)/5) : TicksStep;
+            if (ts / (FromValue - ToValue) > 300)
+                throw new LiveChartsException("TicksStep property is too small compared with the range in " +
+                                              "the gauge, to avoid performance issues, please increase it.");
+
+            for (var i = FromValue; i <= ToValue; i += ts)
             {
                 var alpha = LinearInterpolation(fromAlpha, toAlpha, FromValue, ToValue, i) + 90;
 
@@ -365,7 +427,12 @@ namespace LiveCharts.Wpf
                     new Binding { Path = new PropertyPath(TicksStrokeThicknessProperty), Source = this });
             }
 
-            for (var i = FromValue; i <= ToValue; i += LabelsStep)
+            var ls = double.IsNaN(LabelsStep) ? DecideInterval((ToValue - FromValue) / 5) : LabelsStep;
+            if (ls / (FromValue - ToValue) > 300)
+                throw new LiveChartsException("LabelsStep property is too small compared with the range in " +
+                                              "the gauge, to avoid performance issues, please increase it.");
+
+            for (var i = FromValue; i <= ToValue; i += ls)
             {
                 var alpha = LinearInterpolation(fromAlpha, toAlpha, FromValue, ToValue, i) + 90;
 
@@ -402,6 +469,43 @@ namespace LiveCharts.Wpf
             MoveStick();
         }
 
+        internal void UpdateSections()
+        {
+            if (!IsControlLaoded) return;
+
+            var fromAlpha = (360 - Wedge) * .5;
+            var toAlpha = 360 - fromAlpha;
+            var d = ActualWidth < ActualHeight ? ActualWidth : ActualHeight;
+
+            if (Sections.Any())
+            {
+                SectionsInnerRadius = SectionsInnerRadius > 1
+                    ? 1
+                    : (SectionsInnerRadius < 0
+                        ? 0
+                        : SectionsInnerRadius);
+
+                foreach (var section in Sections)
+                {
+                    var slice = Slices[section];
+                    
+                    Canvas.SetTop(slice, ActualHeight * .5);
+                    Canvas.SetLeft(slice, ActualWidth * .5);
+              
+                    var start = LinearInterpolation(fromAlpha, toAlpha,
+                        FromValue, ToValue, section.FromValue) + 180;
+                    var end = LinearInterpolation(fromAlpha, toAlpha,
+                        FromValue, ToValue, section.ToValue) + 180;
+
+                    slice.RotationAngle = start;
+                    slice.WedgeAngle = end - start;
+                    slice.Radius = d*.5;
+                    slice.InnerRadius = d*.5*SectionsInnerRadius;
+                    slice.Fill = section.Fill;
+                }
+            }
+        }
+
         private static double LinearInterpolation(double fromA, double toA, double fromB, double toB, double value)
         {
             var p1 = new Point(fromB, fromA);
@@ -414,5 +518,22 @@ namespace LiveCharts.Wpf
             return m*(value - p1.X) + p1.Y;
         }
 
+        private static double DecideInterval(double minimum)
+        {
+            var magnitude = Math.Pow(10, Math.Floor(Math.Log(minimum) / Math.Log(10)));
+
+            var residual = minimum / magnitude;
+            double tick;
+            if (residual > 5)
+                tick = 10 * magnitude;
+            else if (residual > 2)
+                tick = 5 * magnitude;
+            else if (residual > 1)
+                tick = 2 * magnitude;
+            else
+                tick = magnitude;
+
+            return tick;
+        }
     }
 }

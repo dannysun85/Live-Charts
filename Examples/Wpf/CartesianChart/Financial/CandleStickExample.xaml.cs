@@ -31,13 +31,28 @@ namespace Wpf.CartesianChart.Financial
                         new OhlcPoint(33, 38, 31, 37),
                         new OhlcPoint(35, 42, 30, 40),
                         new OhlcPoint(37, 40, 35, 38),
+                        new OhlcPoint(35, 38, 32, 33),
+                        new OhlcPoint(32, 35, 30, 32),
+                        new OhlcPoint(33, 38, 31, 37),
+                        new OhlcPoint(35, 42, 30, 40),
+                        new OhlcPoint(37, 40, 35, 38),
+                        new OhlcPoint(35, 38, 32, 33),
+                        new OhlcPoint(32, 35, 30, 32),
+                        new OhlcPoint(33, 38, 31, 37),
+                        new OhlcPoint(35, 42, 30, 40),
+                        new OhlcPoint(37, 40, 35, 38),
+                        new OhlcPoint(35, 38, 32, 33),
+                        new OhlcPoint(32, 35, 30, 32),
+                        new OhlcPoint(33, 38, 31, 37),
+                        new OhlcPoint(35, 42, 30, 40),
+                        new OhlcPoint(37, 40, 35, 38),
+                        new OhlcPoint(35, 38, 32, 33),
+                        new OhlcPoint(32, 35, 30, 32),
+                        new OhlcPoint(33, 38, 31, 37),
+                        new OhlcPoint(35, 42, 30, 40),
+                        new OhlcPoint(37, 40, 35, 38),
                         new OhlcPoint(35, 38, 32, 33)
                     }
-                },
-                new LineSeries
-                {
-                    Values = new ChartValues<double> {30, 32, 35, 30, 28},
-                    Fill = Brushes.Transparent
                 }
             };
 

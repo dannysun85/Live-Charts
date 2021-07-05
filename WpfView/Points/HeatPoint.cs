@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -99,7 +99,7 @@ namespace LiveCharts.Wpf.Points
 
         public override void OnHoverLeave(ChartPoint point)
         {
-            Rectangle.StrokeThickness--;
+            Rectangle.StrokeThickness = ((Series) point.SeriesView).StrokeThickness;
         }
     }
 }

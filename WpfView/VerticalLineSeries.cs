@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -32,7 +31,6 @@ using LiveCharts.Definitions.Points;
 using LiveCharts.Dtos;
 using LiveCharts.SeriesAlgorithms;
 using LiveCharts.Wpf.Charts.Base;
-using LiveCharts.Wpf.Components;
 using LiveCharts.Wpf.Points;
 
 namespace LiveCharts.Wpf
@@ -66,6 +64,9 @@ namespace LiveCharts.Wpf
 
         #region Overridden Methods
 
+        /// <summary>
+        /// This method runs when the update starts
+        /// </summary>
         public override void OnSeriesUpdateStart()
         {
             ActiveSplitters = 0;
@@ -79,54 +80,54 @@ namespace LiveCharts.Wpf
 
             SplittersCollector++;
 
-            if (Figure != null && Values != null)
+            if (IsPathInitialized)
             {
-                var yIni = ChartFunctions.ToDrawMargin(Values.GetTracker(this).Limit2.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
-
-                if (Model.Chart.View.DisableAnimations)
-                    Figure.StartPoint = new Point(0, yIni);
-                else
-                    Figure.BeginAnimation(PathFigure.StartPointProperty,
-                        new PointAnimation(new Point(0, yIni),
-                            Model.Chart.View.AnimationsSpeed));
+                Model.Chart.View.EnsureElementBelongsToCurrentDrawMargin(Path);
+                Path.Stroke = Stroke;
+                Path.StrokeThickness = StrokeThickness;
+                Path.Fill = Fill;
+                Path.Visibility = Visibility;
+                Path.StrokeDashArray = StrokeDashArray;
+                Panel.SetZIndex(Path, Panel.GetZIndex(this));
+                return;
             }
-
-            if (IsPathInitialized) return;
 
             IsPathInitialized = true;
 
-            Path = new Path();
-            BindingOperations.SetBinding(Path, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath("Stroke"), Source = this });
-            BindingOperations.SetBinding(Path, Shape.FillProperty,
-                new Binding { Path = new PropertyPath("Fill"), Source = this });
-            BindingOperations.SetBinding(Path, Shape.StrokeThicknessProperty,
-                new Binding { Path = new PropertyPath("StrokeThickness"), Source = this });
-            BindingOperations.SetBinding(Path, VisibilityProperty,
-                new Binding { Path = new PropertyPath("Visibility"), Source = this });
-            BindingOperations.SetBinding(Path, Panel.ZIndexProperty,
-                new Binding { Path = new PropertyPath(Panel.ZIndexProperty), Source = this });
-            BindingOperations.SetBinding(Path, Shape.StrokeDashArrayProperty,
-                new Binding { Path = new PropertyPath(StrokeDashArrayProperty), Source = this });
+            Path = new Path
+            {
+                Stroke = Stroke,
+                StrokeThickness = StrokeThickness,
+                Fill = Fill,
+                Visibility = Visibility,
+                StrokeDashArray = StrokeDashArray
+            };
+
+            Panel.SetZIndex(Path, Panel.GetZIndex(this));
+
             var geometry = new PathGeometry();
             Figure = new PathFigure();
             geometry.Figures.Add(Figure);
             Path.Data = geometry;
-            Model.Chart.View.AddToDrawMargin(Path);
 
-            var y = ChartFunctions.ToDrawMargin(ActualValues.GetTracker(this).Limit2.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
-            Figure.StartPoint = new Point(0, y);
+            Model.Chart.View.EnsureElementBelongsToCurrentDrawMargin(Path);
         }
 
-        public override IChartPointView GetPointView(IChartPointView view, ChartPoint point, string label)
+        /// <summary>
+        /// Gets the view of a given point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="label"></param>
+        /// <returns></returns>
+        public override IChartPointView GetPointView(ChartPoint point, string label)
         {
-            var mhr = PointGeometrySize < 5 ? 5 : PointGeometrySize;
+            var mhr = PointGeometrySize < 10 ? 10 : PointGeometrySize;
 
-            var pbv = (VBezierPointView) view;
+            var pbv = (VerticalBezierPointView) point.View;
 
             if (pbv == null)
             {
-                pbv = new VBezierPointView
+                pbv = new VerticalBezierPointView
                 {
                     Segment = new BezierSegment(),
                     Container = Figure,
@@ -144,7 +145,7 @@ namespace LiveCharts.Wpf
                     .EnsureElementBelongsToCurrentDrawMargin(pbv.DataLabel);
             }
 
-            if ((Model.Chart.View.HasTooltip || Model.Chart.View.HasDataClickEventAttached) && pbv.HoverShape == null)
+            if (Model.Chart.RequiresHoverShape && pbv.HoverShape == null)
             {
                 pbv.HoverShape = new Rectangle
                 {
@@ -155,8 +156,6 @@ namespace LiveCharts.Wpf
                 };
 
                 Panel.SetZIndex(pbv.HoverShape, int.MaxValue);
-                BindingOperations.SetBinding(pbv.HoverShape, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
 
                 var wpfChart = (Chart)Model.Chart.View;
                 wpfChart.AttachHoverableEventTo(pbv.HoverShape);
@@ -164,48 +163,63 @@ namespace LiveCharts.Wpf
                 Model.Chart.View.AddToDrawMargin(pbv.HoverShape);
             }
 
+            if (pbv.HoverShape != null) pbv.HoverShape.Visibility = Visibility;
+
             if (PointGeometry != null && Math.Abs(PointGeometrySize) > 0.1 && pbv.Shape == null)
             {
-                pbv.Shape = new Ellipse();
-
-                BindingOperations.SetBinding(pbv.Shape, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(PointForeroundProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Shape, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(StrokeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Shape, Shape.StrokeThicknessProperty,
-                    new Binding { Path = new PropertyPath(StrokeThicknessProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Shape, WidthProperty,
-                    new Binding { Path = new PropertyPath(PointGeometrySizeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Shape, HeightProperty,
-                    new Binding { Path = new PropertyPath(PointGeometrySizeProperty), Source = this });
-
-                BindingOperations.SetBinding(pbv.Shape, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
-
-                Panel.SetZIndex(pbv.Shape, int.MaxValue - 2);
+                if (PointGeometry != null)
+                {
+                    pbv.Shape = new Path
+                    {
+                        Stretch = Stretch.Fill,
+                        StrokeThickness = StrokeThickness
+                    };
+                }
 
                 Model.Chart.View.AddToDrawMargin(pbv.Shape);
             }
 
-            if (DataLabels && pbv.DataLabel == null)
+            if (pbv.Shape != null)
             {
-                pbv.DataLabel = BindATextBlock(0);
-                Panel.SetZIndex(pbv.DataLabel, int.MaxValue - 1);
+                pbv.Shape.Fill = PointForeground;
+                pbv.Shape.Stroke = Stroke;
+                pbv.Shape.StrokeThickness = StrokeThickness;
+                pbv.Shape.Width = PointGeometrySize;
+                pbv.Shape.Height = PointGeometrySize;
+                pbv.Shape.Data = PointGeometry;
+                pbv.Shape.Visibility = Visibility;
+                Panel.SetZIndex(pbv.Shape, Panel.GetZIndex(this) + 1);
 
-                Model.Chart.View.AddToDrawMargin(pbv.DataLabel);
+                if (point.Stroke != null) pbv.Shape.Stroke = (Brush)point.Stroke;
+                if (point.Fill != null) pbv.Shape.Fill = (Brush)point.Fill;
             }
 
-            if (pbv.DataLabel != null) pbv.DataLabel.Text = label;
+            if (DataLabels )
+            {
+                pbv.DataLabel = UpdateLabelContent(new DataLabelViewModel
+                {
+                    FormattedText = label,
+                    Point = point
+                }, pbv.DataLabel);
+            }
 
-            if (point.Stroke != null) pbv.Shape.Stroke = (Brush)point.Stroke;
-            if (point.Fill != null) pbv.Shape.Fill = (Brush)point.Fill;
+            if (!DataLabels && pbv.DataLabel != null)
+            {
+                Model.Chart.View.RemoveFromDrawMargin(pbv.DataLabel);
+                pbv.DataLabel = null;
+            }
 
             return pbv;
         }
-#endregion
+        #endregion
 
         #region Public Methods 
 
+        /// <summary>
+        /// Starts the segment.
+        /// </summary>
+        /// <param name="atIndex">At index.</param>
+        /// <param name="location">The location.</param>
         public override void StartSegment(int atIndex, CorePoint location)
         {
             if (Splitters.Count <= ActiveSplitters)
@@ -218,21 +232,36 @@ namespace LiveCharts.Wpf
             var animSpeed = Model.Chart.View.AnimationsSpeed;
             var noAnim = Model.Chart.View.DisableAnimations;
 
+            var areaLimit = ChartFunctions.ToDrawMargin(double.IsNaN(AreaLimit)
+                ? Model.Chart.AxisX[ScalesXAt].FirstSeparator
+                : AreaLimit, AxisOrientation.X, Model.Chart, ScalesXAt);
+
+            if (Values != null && atIndex == 0)
+            {
+                if (Model.Chart.View.DisableAnimations || IsNew)
+                    Figure.StartPoint = new Point(areaLimit, location.Y);
+                else
+                    Figure.BeginAnimation(PathFigure.StartPointProperty,
+                        new PointAnimation(new Point(areaLimit, location.Y), animSpeed));
+
+                IsNew = false;
+            }
+
             if (atIndex != 0)
             {
                 Figure.Segments.Remove(splitter.Bottom);
 
                 if (splitter.IsNew)
                 {
-                    splitter.Bottom.Point = new Point(0, location.Y);
-                    splitter.Left.Point = new Point(0, location.Y);
+                    splitter.Bottom.Point = new Point(Model.Chart.DrawMargin.Width, location.Y);
+                    splitter.Left.Point = new Point(Model.Chart.DrawMargin.Width, location.Y);
                 }
 
                 if (noAnim)
-                    splitter.Bottom.Point = new Point(0, location.Y);
+                    splitter.Bottom.Point = new Point(Model.Chart.DrawMargin.Width, location.Y);
                 else
                     splitter.Bottom.BeginAnimation(LineSegment.PointProperty,
-                        new PointAnimation(new Point(0, location.Y), animSpeed));
+                        new PointAnimation(new Point(Model.Chart.DrawMargin.Width, location.Y), animSpeed));
                 Figure.Segments.Insert(atIndex, splitter.Bottom);
 
                 Figure.Segments.Remove(splitter.Left);
@@ -248,8 +277,8 @@ namespace LiveCharts.Wpf
 
             if (splitter.IsNew)
             {
-                splitter.Bottom.Point = new Point(0, location.Y);
-                splitter.Left.Point = new Point(0, location.Y);
+                splitter.Bottom.Point = new Point(location.X, Model.Chart.DrawMargin.Height);
+                splitter.Left.Point = new Point(location.X, Model.Chart.DrawMargin.Height);
             }
 
             Figure.Segments.Remove(splitter.Left);
@@ -261,12 +290,26 @@ namespace LiveCharts.Wpf
             Figure.Segments.Insert(atIndex, splitter.Left);
         }
 
+        /// <summary>
+        /// Ends the segment.
+        /// </summary>
+        /// <param name="atIndex">At index.</param>
+        /// <param name="location">The location.</param>
         public override void EndSegment(int atIndex, CorePoint location)
         {
             var splitter = Splitters[ActiveSplitters - 1];
 
             var animSpeed = Model.Chart.View.AnimationsSpeed;
             var noAnim = Model.Chart.View.DisableAnimations;
+
+            var areaLimit = ChartFunctions.ToDrawMargin(double.IsNaN(AreaLimit)
+                 ? Model.Chart.AxisX[ScalesXAt].FirstSeparator
+                 : AreaLimit, AxisOrientation.X, Model.Chart, ScalesXAt);
+
+            var uw = Model.Chart.AxisY[ScalesYAt].EvaluatesUnitWidth
+                ? ChartFunctions.GetUnitWidth(AxisOrientation.Y, Model.Chart, ScalesYAt) / 2
+                : 0;
+            location.Y += uw;
 
             if (splitter.IsNew)
             {
@@ -275,10 +318,10 @@ namespace LiveCharts.Wpf
 
             Figure.Segments.Remove(splitter.Right);
             if (noAnim)
-                splitter.Right.Point = new Point(0, location.Y);
+                splitter.Right.Point = new Point(areaLimit, location.Y);
             else
                 splitter.Right.BeginAnimation(LineSegment.PointProperty,
-                    new PointAnimation(new Point(0, location.Y), animSpeed));
+                    new PointAnimation(new Point(areaLimit, location.Y), animSpeed));
             Figure.Segments.Insert(atIndex, splitter.Right);
 
             splitter.IsNew = false;
@@ -292,7 +335,7 @@ namespace LiveCharts.Wpf
         {
             SetCurrentValue(LineSmoothnessProperty, .7d);
             SetCurrentValue(PointGeometrySizeProperty, 8d);
-            SetCurrentValue(PointForeroundProperty, Brushes.White);
+            SetCurrentValue(PointForegroundProperty, Brushes.White);
             SetCurrentValue(StrokeThicknessProperty, 2d);
 
             Func<ChartPoint, string> defaultLabel = x => Model.CurrentXAxis.GetFormatter()(x.X);

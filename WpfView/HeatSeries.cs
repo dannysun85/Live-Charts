@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -75,6 +75,9 @@ namespace LiveCharts.Wpf
 
         #region Properties
 
+        /// <summary>
+        /// The draws heat range property
+        /// </summary>
         public static readonly DependencyProperty DrawsHeatRangeProperty = DependencyProperty.Register(
             "DrawsHeatRange", typeof(bool), typeof(HeatSeries),
             new PropertyMetadata(default(bool), CallChartUpdater()));
@@ -87,6 +90,9 @@ namespace LiveCharts.Wpf
             set { SetValue(DrawsHeatRangeProperty, value); }
         }
 
+        /// <summary>
+        /// The gradient stop collection property
+        /// </summary>
         public static readonly DependencyProperty GradientStopCollectionProperty = DependencyProperty.Register(
             "GradientStopCollection", typeof(GradientStopCollection), typeof(HeatSeries), new PropertyMetadata(default(GradientStopCollection)));
         /// <summary>
@@ -117,9 +123,15 @@ namespace LiveCharts.Wpf
 
         #region Overridden Methods
 
-        public override IChartPointView GetPointView(IChartPointView view, ChartPoint point, string label)
+        /// <summary>
+        /// Gets the view of a given point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="label"></param>
+        /// <returns></returns>
+        public override IChartPointView GetPointView(ChartPoint point, string label)
         {
-            var pbv = (view as HeatPoint);
+            var pbv = (HeatPoint) point.View;
 
             if (pbv == null)
             {
@@ -128,17 +140,6 @@ namespace LiveCharts.Wpf
                     IsNew = true,
                     Rectangle = new Rectangle()
                 };
-
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(StrokeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeThicknessProperty,
-                    new Binding { Path = new PropertyPath(StrokeThicknessProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, Panel.ZIndexProperty,
-                    new Binding { Path = new PropertyPath(Panel.ZIndexProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeDashArrayProperty,
-                    new Binding { Path = new PropertyPath(StrokeDashArrayProperty), Source = this });
 
                 Model.Chart.View.AddToDrawMargin(pbv.Rectangle);
             }
@@ -153,6 +154,12 @@ namespace LiveCharts.Wpf
                     .EnsureElementBelongsToCurrentDrawMargin(pbv.DataLabel);
             }
 
+            pbv.Rectangle.Stroke = Stroke;
+            pbv.Rectangle.StrokeThickness = StrokeThickness;
+            pbv.Rectangle.Visibility = Visibility;
+            pbv.Rectangle.StrokeDashArray = StrokeDashArray;
+            Panel.SetZIndex(pbv.Rectangle, Panel.GetZIndex(pbv.Rectangle));
+
             if (Model.Chart.RequiresHoverShape && pbv.HoverShape == null)
             {
                 pbv.HoverShape = new Rectangle
@@ -162,8 +169,6 @@ namespace LiveCharts.Wpf
                 };
 
                 Panel.SetZIndex(pbv.HoverShape, int.MaxValue);
-                BindingOperations.SetBinding(pbv.HoverShape, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
 
                 var wpfChart = (Chart)Model.Chart.View;
                 wpfChart.AttachHoverableEventTo(pbv.HoverShape);
@@ -171,29 +176,43 @@ namespace LiveCharts.Wpf
                 Model.Chart.View.AddToDrawMargin(pbv.HoverShape);
             }
 
-            if (DataLabels && pbv.DataLabel == null)
-            {
-                pbv.DataLabel = BindATextBlock(0);
-                Panel.SetZIndex(pbv.DataLabel, int.MaxValue - 1);
+            if (pbv.HoverShape != null) pbv.HoverShape.Visibility = Visibility;
 
-                Model.Chart.View.AddToDrawMargin(pbv.DataLabel);
+            if (DataLabels)
+            {
+                pbv.DataLabel = UpdateLabelContent(new DataLabelViewModel
+                {
+                    FormattedText = label,
+                    Point = point
+                }, pbv.DataLabel);
             }
 
-            if (pbv.DataLabel != null) pbv.DataLabel.Text = label;
+            if (!DataLabels && pbv.DataLabel != null)
+            {
+                Model.Chart.View.RemoveFromDrawMargin(pbv.DataLabel);
+                pbv.DataLabel = null;
+            }
 
             return pbv;
         }
 
-        public override void Erase()
+        /// <summary>
+        /// Erases series
+        /// </summary>
+        /// <param name="removeFromView"></param>
+        public override void Erase(bool removeFromView = true)
         {
             Values.GetPoints(this).ForEach(p =>
             {
                 if (p.View != null)
                     p.View.RemoveFromView(Model.Chart);
             });
-            Model.Chart.View.RemoveFromView(this);
+            if (removeFromView) Model.Chart.View.RemoveFromView(this);
         }
 
+        /// <summary>
+        /// Defines special elements to draw according to the series type
+        /// </summary>
         public override void DrawSpecializedElements()
         {
             if (DrawsHeatRange)
@@ -201,27 +220,29 @@ namespace LiveCharts.Wpf
                 if (ColorRangeControl == null)
                 {
                     ColorRangeControl = new HeatColorRange();
-                    ColorRangeControl.SetBinding(TextBlock.FontFamilyProperty,
-                        new Binding { Path = new PropertyPath(FontFamilyProperty), Source = this });
-                    ColorRangeControl.SetBinding(FontSizeProperty,
-                        new Binding { Path = new PropertyPath(FontSizeProperty), Source = this });
-                    ColorRangeControl.SetBinding(TextBlock.FontStretchProperty,
-                        new Binding { Path = new PropertyPath(FontStretchProperty), Source = this });
-                    ColorRangeControl.SetBinding(TextBlock.FontStyleProperty,
-                        new Binding { Path = new PropertyPath(FontStyleProperty), Source = this });
-                    ColorRangeControl.SetBinding(TextBlock.FontWeightProperty,
-                        new Binding { Path = new PropertyPath(FontWeightProperty), Source = this });
-                    ColorRangeControl.SetBinding(TextBlock.ForegroundProperty,
-                        new Binding { Path = new PropertyPath(ForegroundProperty), Source = this });
-                    ColorRangeControl.SetBinding(VisibilityProperty,
-                        new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
                 }
+
+                ColorRangeControl.SetBinding(TextBlock.FontFamilyProperty,
+                    new Binding {Path = new PropertyPath(FontFamilyProperty), Source = this});
+                ColorRangeControl.SetBinding(TextBlock.FontSizeProperty,
+                    new Binding { Path = new PropertyPath(FontSizeProperty), Source = this });
+                ColorRangeControl.SetBinding(TextBlock.FontStretchProperty,
+                    new Binding { Path = new PropertyPath(FontStretchProperty), Source = this });
+                ColorRangeControl.SetBinding(TextBlock.FontStyleProperty,
+                    new Binding { Path = new PropertyPath(FontStyleProperty), Source = this });
+                ColorRangeControl.SetBinding(TextBlock.FontWeightProperty,
+                    new Binding { Path = new PropertyPath(FontWeightProperty), Source = this });
+                ColorRangeControl.SetBinding(TextBlock.ForegroundProperty,
+                    new Binding { Path = new PropertyPath(ForegroundProperty), Source = this });
+                ColorRangeControl.SetBinding(VisibilityProperty,
+                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
+
                 if (ColorRangeControl.Parent == null)
                 {
                     Model.Chart.View.AddToView(ColorRangeControl);
                 }
-                var max = ColorRangeControl.SetMax(ActualValues.GetTracker(this).Limit3.Max.ToString(CultureInfo.InvariantCulture));
-                var min = ColorRangeControl.SetMin(ActualValues.GetTracker(this).Limit3.Min.ToString(CultureInfo.InvariantCulture));
+                var max = ColorRangeControl.SetMax(ActualValues.GetTracker(this).WLimit.Max.ToString(CultureInfo.InvariantCulture));
+                var min = ColorRangeControl.SetMin(ActualValues.GetTracker(this).WLimit.Min.ToString(CultureInfo.InvariantCulture));
 
                 var m = max > min ? max : min;
 
@@ -236,8 +257,13 @@ namespace LiveCharts.Wpf
             }
         }
 
+        /// <summary>
+        /// Places specializes items
+        /// </summary>
         public override void PlaceSpecializedElements()
         {
+            if (!DrawsHeatRange) return;
+
             ColorRangeControl.UpdateFill(GradientStopCollection);
 
             ColorRangeControl.Height = Model.Chart.DrawMargin.Height;
@@ -264,6 +290,9 @@ namespace LiveCharts.Wpf
             DefaultFillOpacity = 0.4;
         }
 
+        /// <summary>
+        /// Initializes the series colors if they are not set
+        /// </summary>
         public override void InitializeColors()
         {
             var wpfChart = (Chart)Model.Chart.View;

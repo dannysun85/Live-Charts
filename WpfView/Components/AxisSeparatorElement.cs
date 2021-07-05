@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@
 //SOFTWARE.
 
 using System;
-using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -30,13 +30,22 @@ using System.Windows.Shapes;
 using LiveCharts.Charts;
 using LiveCharts.Definitions.Charts;
 using LiveCharts.Dtos;
+using LiveCharts.Wpf.Charts.Base;
 
 namespace LiveCharts.Wpf.Components
 {
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="LiveCharts.Definitions.Charts.ISeparatorElementView" />
     public class AxisSeparatorElement : ISeparatorElementView
     {
         private readonly SeparatorElementCore _model;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AxisSeparatorElement"/> class.
+        /// </summary>
+        /// <param name="model">The model.</param>
         public AxisSeparatorElement(SeparatorElementCore model)
         {
             _model = model;
@@ -44,20 +53,45 @@ namespace LiveCharts.Wpf.Components
 
         internal TextBlock TextBlock { get; set; }
         internal Line Line { get; set; }
+        /// <summary>
+        /// Gets the label model.
+        /// </summary>
+        /// <value>
+        /// The label model.
+        /// </value>
         public LabelEvaluation LabelModel { get; private set; }
 
+        /// <summary>
+        /// Gets the model.
+        /// </summary>
+        /// <value>
+        /// The model.
+        /// </value>
         public SeparatorElementCore Model
         {
             get { return _model; }
         }
-        
+
+        /// <summary>
+        /// Updates the label.
+        /// </summary>
+        /// <param name="text">The text.</param>
+        /// <param name="axis">The axis.</param>
+        /// <param name="source">The source.</param>
+        /// <returns></returns>
         public LabelEvaluation UpdateLabel(string text, AxisCore axis, AxisOrientation source)
         {
             TextBlock.Text = text;
-            TextBlock.UpdateLayout();
+
+            var formattedText = new FormattedText(
+                  TextBlock.Text,
+                  CultureInfo.CurrentUICulture,
+                  FlowDirection.LeftToRight,
+                  new Typeface(TextBlock.FontFamily, TextBlock.FontStyle, TextBlock.FontWeight, TextBlock.FontStretch),
+                  TextBlock.FontSize, Brushes.Black);
 
             var transform = new LabelEvaluation(axis.View.LabelsRotation,
-                TextBlock.ActualWidth, TextBlock.ActualHeight, axis, source);
+                formattedText.Width, formattedText.Height, axis, source);
 
             TextBlock.RenderTransform = Math.Abs(transform.LabelAngle) > 1
                 ? new RotateTransform(transform.LabelAngle)
@@ -68,23 +102,28 @@ namespace LiveCharts.Wpf.Components
             return transform;
         }
 
+        /// <summary>
+        /// Clears the specified chart.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
         public void Clear(IChartView chart)
         {
-#if DEBUG
-            Debug.WriteLine(((Canvas)chart.GetCanvas()).Children.Count);
-#endif
-
             chart.RemoveFromView(TextBlock);
             chart.RemoveFromView(Line);
-
-#if DEBUG
-            Debug.WriteLine(((Canvas) chart.GetCanvas()).Children.Count);
-#endif
-
             TextBlock = null;
             Line = null;
-        }      
+        }
 
+        /// <summary>
+        /// Places the specified chart.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="axis">The axis.</param>
+        /// <param name="direction">The direction.</param>
+        /// <param name="axisIndex">Index of the axis.</param>
+        /// <param name="toLabel">To label.</param>
+        /// <param name="toLine">To line.</param>
+        /// <param name="tab">The tab.</param>
         public void Place(ChartCore chart, AxisCore axis, AxisOrientation direction, int axisIndex, 
             double toLabel, double toLine, double tab)
         {
@@ -110,6 +149,10 @@ namespace LiveCharts.Wpf.Components
             }
         }
 
+        /// <summary>
+        /// Removes the specified chart.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
         public void Remove(ChartCore chart)
         {
             chart.View.RemoveFromView(TextBlock);
@@ -118,6 +161,16 @@ namespace LiveCharts.Wpf.Components
             Line = null;
         }
 
+        /// <summary>
+        /// Moves the specified chart.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
+        /// <param name="axis">The axis.</param>
+        /// <param name="direction">The direction.</param>
+        /// <param name="axisIndex">Index of the axis.</param>
+        /// <param name="toLabel">To label.</param>
+        /// <param name="toLine">To line.</param>
+        /// <param name="tab">The tab.</param>
         public void Move(ChartCore chart, AxisCore axis, AxisOrientation direction, int axisIndex, double toLabel, double toLine, double tab)
         {
             if (direction == AxisOrientation.Y)
@@ -155,6 +208,11 @@ namespace LiveCharts.Wpf.Components
 
         }
 
+        /// <summary>
+        /// Fades the in.
+        /// </summary>
+        /// <param name="axis">The axis.</param>
+        /// <param name="chart">The chart.</param>
         public void FadeIn(AxisCore axis, ChartCore chart)
         {
             if (TextBlock.Visibility != Visibility.Collapsed)
@@ -166,6 +224,10 @@ namespace LiveCharts.Wpf.Components
                     new DoubleAnimation(0, 1, chart.View.AnimationsSpeed));
         }
 
+        /// <summary>
+        /// Fades the out and remove.
+        /// </summary>
+        /// <param name="chart">The chart.</param>
         public void FadeOutAndRemove(ChartCore chart)
         {
             if (TextBlock.Visibility == Visibility.Collapsed &&
@@ -178,16 +240,10 @@ namespace LiveCharts.Wpf.Components
                 Duration = chart.View.AnimationsSpeed
             };
 
+            var dispatcher = ((Chart) chart.View).Dispatcher;
             anim.Completed += (sender, args) =>
             {
-                if (Application.Current == null)
-                {
-                    chart.View.RemoveFromView(TextBlock);
-                    chart.View.RemoveFromView(Line);
-                    return;
-                }
-
-                Application.Current.Dispatcher.Invoke(new Action(() =>
+                dispatcher.Invoke(new Action(() =>
                 {
                     chart.View.RemoveFromView(TextBlock);
                     chart.View.RemoveFromView(Line);

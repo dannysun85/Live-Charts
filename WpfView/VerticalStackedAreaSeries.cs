@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -24,7 +24,6 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -62,6 +61,9 @@ namespace LiveCharts.Wpf
 
         #region Properties
 
+        /// <summary>
+        /// The stack mode property
+        /// </summary>
         public static readonly DependencyProperty StackModeProperty = DependencyProperty.Register(
             "StackMode", typeof (StackMode), typeof (VerticalStackedAreaSeries), new PropertyMetadata(default(StackMode)));
         /// <summary>
@@ -76,6 +78,9 @@ namespace LiveCharts.Wpf
 
         #region Overridden Methods
 
+        /// <summary>
+        /// This method runs when the update starts
+        /// </summary>
         public override void OnSeriesUpdateStart()
         {
             ActiveSplitters = 0;
@@ -91,7 +96,7 @@ namespace LiveCharts.Wpf
 
             if (Figure != null && Values != null)
             {
-                var yIni = ChartFunctions.ToDrawMargin(Values.GetTracker(this).Limit2.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
+                var yIni = ChartFunctions.ToDrawMargin(Values.GetTracker(this).YLimit.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
 
                 if (Model.Chart.View.DisableAnimations)
                     Figure.StartPoint = new Point(0, yIni);
@@ -101,30 +106,37 @@ namespace LiveCharts.Wpf
                             Model.Chart.View.AnimationsSpeed));
             }
 
-            if (IsPathInitialized) return;
+            if (IsPathInitialized)
+            {
+                Model.Chart.View.EnsureElementBelongsToCurrentDrawMargin(Path);
+                Path.Stroke = Stroke;
+                Path.StrokeThickness = StrokeThickness;
+                Path.Fill = Fill;
+                Path.Visibility = Visibility;
+                Path.StrokeDashArray = StrokeDashArray;
+                return;
+            }
 
             IsPathInitialized = true;
 
-            Path = new Path();
-            BindingOperations.SetBinding(Path, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath("Stroke"), Source = this });
-            BindingOperations.SetBinding(Path, Shape.FillProperty,
-                new Binding { Path = new PropertyPath("Fill"), Source = this });
-            BindingOperations.SetBinding(Path, Shape.StrokeThicknessProperty,
-                new Binding { Path = new PropertyPath("StrokeThickness"), Source = this });
-            BindingOperations.SetBinding(Path, VisibilityProperty,
-                new Binding { Path = new PropertyPath("Visibility"), Source = this });
-            BindingOperations.SetBinding(Path, Panel.ZIndexProperty,
-                new Binding { Path = new PropertyPath(Panel.ZIndexProperty), Source = this });
-            BindingOperations.SetBinding(Path, Shape.StrokeDashArrayProperty,
-                new Binding { Path = new PropertyPath(StrokeDashArrayProperty), Source = this });
+            Path = new Path
+            {
+                Stroke = Stroke,
+                StrokeThickness = StrokeThickness,
+                Fill = Fill,
+                Visibility = Visibility,
+                StrokeDashArray = StrokeDashArray
+            };
+
+            Panel.SetZIndex(Path, Panel.GetZIndex(this));
+
             var geometry = new PathGeometry();
             Figure = new PathFigure();
             geometry.Figures.Add(Figure);
             Path.Data = geometry;
             Model.Chart.View.AddToDrawMargin(Path);
 
-            var y = ChartFunctions.ToDrawMargin(ActualValues.GetTracker(this).Limit2.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
+            var y = ChartFunctions.ToDrawMargin(ActualValues.GetTracker(this).YLimit.Min, AxisOrientation.Y, Model.Chart, ScalesYAt);
             Figure.StartPoint = new Point(0, y);
 
             var i = Model.Chart.View.Series.IndexOf(this);
@@ -144,7 +156,7 @@ namespace LiveCharts.Wpf
         {
             SetCurrentValue(LineSmoothnessProperty, .7d);
             SetCurrentValue(PointGeometrySizeProperty, 0d);
-            SetCurrentValue(PointForeroundProperty, Brushes.White);
+            SetCurrentValue(PointForegroundProperty, Brushes.White);
             SetCurrentValue(ForegroundProperty, new SolidColorBrush(Color.FromRgb(229, 229, 229)));
             SetCurrentValue(StrokeThicknessProperty, 0d);
             SetCurrentValue(StackModeProperty, StackMode.Values);

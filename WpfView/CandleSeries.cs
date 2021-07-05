@@ -1,6 +1,7 @@
-﻿//The MIT License(MIT)
+﻿
+//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +22,23 @@
 //SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using LiveCharts.Definitions.Points;
 using LiveCharts.Definitions.Series;
-using LiveCharts.Helpers;
 using LiveCharts.SeriesAlgorithms;
 using LiveCharts.Wpf.Charts.Base;
 using LiveCharts.Wpf.Points;
-using LiveCharts.Dtos;
 
 namespace LiveCharts.Wpf
 {
     /// <summary>
     /// The Candle series defines a financial series, add this series to a cartesian chart
     /// </summary>
-    public class CandleSeries : Series, IOhlcSeriesView
+    public class CandleSeries : Series, IFinancialSeriesView
     {
         #region Constructors
         /// <summary>
@@ -70,6 +69,9 @@ namespace LiveCharts.Wpf
 
         #region Properties
 
+        /// <summary>
+        /// The maximum column width property
+        /// </summary>
         public static readonly DependencyProperty MaxColumnWidthProperty = DependencyProperty.Register(
             "MaxColumnWidth", typeof (double), typeof (CandleSeries), new PropertyMetadata(default(double)));
         /// <summary>
@@ -81,6 +83,9 @@ namespace LiveCharts.Wpf
             set { SetValue(MaxColumnWidthProperty, value); }
         }
 
+        /// <summary>
+        /// The increase brush property
+        /// </summary>
         public static readonly DependencyProperty IncreaseBrushProperty = DependencyProperty.Register(
             "IncreaseBrush", typeof (Brush), typeof (CandleSeries), new PropertyMetadata(default(Brush)));
         /// <summary>
@@ -92,6 +97,9 @@ namespace LiveCharts.Wpf
             set { SetValue(IncreaseBrushProperty, value); }
         }
 
+        /// <summary>
+        /// The decrease brush property
+        /// </summary>
         public static readonly DependencyProperty DecreaseBrushProperty = DependencyProperty.Register(
             "DecreaseBrush", typeof (Brush), typeof (CandleSeries), new PropertyMetadata(default(Brush)));
         /// <summary>
@@ -102,19 +110,45 @@ namespace LiveCharts.Wpf
             get { return (Brush) GetValue(DecreaseBrushProperty); }
             set { SetValue(DecreaseBrushProperty, value); }
         }
-        
+
+        /// <summary>
+        /// The coloring rules property
+        /// </summary>
+        public static readonly DependencyProperty ColoringRulesProperty = DependencyProperty.Register(
+            "ColoringRules", typeof(IList<FinancialColoringRule>), typeof(CandleSeries), new PropertyMetadata(default(IList<FinancialColoringRule>)));
+        /// <summary>
+        /// Gets or sets the coloring rules, the coloring rules allows you to customize Stroke and Fill properties according to your needs, the first rule in this collection that returns true, will decide the Stroke/Fill of every point. If this property is not null (default is null), CandleSeries Fill/Stroke will be based on DecreaseBrush and IncreaseBrush properties.
+        /// </summary>
+        /// <value>
+        /// The coloring rules.
+        /// </value>
+        public IList<FinancialColoringRule> ColoringRules
+        {
+            get { return (IList<FinancialColoringRule>) GetValue(ColoringRulesProperty); }
+            set { SetValue(ColoringRulesProperty, value); }
+        }
+
         #endregion
 
         #region Overridden Methods
 
+        /// <summary>
+        /// This method runs when the update starts
+        /// </summary>
         public override void OnSeriesUpdateStart()
         {
             //do nothing on updateStart
         }
 
-        public override IChartPointView GetPointView(IChartPointView view, ChartPoint point, string label)
+        /// <summary>
+        /// Gets the point view.
+        /// </summary>
+        /// <param name="point">The point.</param>
+        /// <param name="label">The label.</param>
+        /// <returns></returns>
+        public override IChartPointView GetPointView(ChartPoint point, string label)
         {
-            var pbv = (view as CandlePointView);
+            var pbv = (CandlePointView)point.View;
 
             if (pbv == null)
             {
@@ -124,28 +158,6 @@ namespace LiveCharts.Wpf
                     HighToLowLine = new Line(),
                     OpenToCloseRectangle = new Rectangle()
                 };
-
-                BindingOperations.SetBinding(pbv.HighToLowLine, Shape.StrokeThicknessProperty,
-                    new Binding {Path = new PropertyPath(StrokeThicknessProperty), Source = this});
-                BindingOperations.SetBinding(pbv.HighToLowLine, Shape.StrokeDashArrayProperty,
-                    new Binding {Path = new PropertyPath(StrokeDashArrayProperty), Source = this});
-                BindingOperations.SetBinding(pbv.HighToLowLine, Panel.ZIndexProperty,
-                    new Binding {Path = new PropertyPath(Panel.ZIndexProperty), Source = this});
-                BindingOperations.SetBinding(pbv.HighToLowLine, VisibilityProperty,
-                    new Binding {Path = new PropertyPath(VisibilityProperty), Source = this});
-
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(FillProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(StrokeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.StrokeThicknessProperty,
-                    new Binding { Path = new PropertyPath(StrokeThicknessProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.StrokeDashArrayProperty,
-                    new Binding { Path = new PropertyPath(StrokeDashArrayProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Panel.ZIndexProperty,
-                    new Binding { Path = new PropertyPath(Panel.ZIndexProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
 
                 Model.Chart.View.AddToDrawMargin(pbv.HighToLowLine);
                 Model.Chart.View.AddToDrawMargin(pbv.OpenToCloseRectangle);
@@ -163,6 +175,20 @@ namespace LiveCharts.Wpf
                     .EnsureElementBelongsToCurrentDrawMargin(pbv.DataLabel);
             }
 
+            var i = Panel.GetZIndex(this);
+
+            pbv.HighToLowLine.StrokeThickness = StrokeThickness;
+            pbv.HighToLowLine.StrokeDashArray = StrokeDashArray;
+            pbv.HighToLowLine.Visibility = Visibility;
+            Panel.SetZIndex(pbv.HighToLowLine, i);
+
+            pbv.OpenToCloseRectangle.Fill = Fill;
+            pbv.OpenToCloseRectangle.StrokeThickness = StrokeThickness;
+            pbv.OpenToCloseRectangle.Stroke = Stroke;
+            pbv.OpenToCloseRectangle.StrokeDashArray = StrokeDashArray;
+            pbv.OpenToCloseRectangle.Visibility = Visibility;
+            Panel.SetZIndex(pbv.HighToLowLine, i);
+
             if (Model.Chart.RequiresHoverShape && pbv.HoverShape == null)
             {
                 pbv.HoverShape = new Rectangle
@@ -172,8 +198,6 @@ namespace LiveCharts.Wpf
                 };
 
                 Panel.SetZIndex(pbv.HoverShape, int.MaxValue);
-                BindingOperations.SetBinding(pbv.HoverShape, VisibilityProperty,
-                    new Binding {Path = new PropertyPath(VisibilityProperty), Source = this});
 
                 var wpfChart = (Chart)Model.Chart.View;
                 wpfChart.AttachHoverableEventTo(pbv.HoverShape);
@@ -181,33 +205,21 @@ namespace LiveCharts.Wpf
                 Model.Chart.View.AddToDrawMargin(pbv.HoverShape);
             }
 
-            if (DataLabels && pbv.DataLabel == null)
-            {
-                pbv.DataLabel = BindATextBlock(0);
-                Panel.SetZIndex(pbv.DataLabel, int.MaxValue - 1);
+            if (pbv.HoverShape != null) pbv.HoverShape.Visibility = Visibility;
 
-                Model.Chart.View.AddToDrawMargin(pbv.DataLabel);
+            if (DataLabels)
+            {
+                pbv.DataLabel = UpdateLabelContent(new DataLabelViewModel
+                {
+                    FormattedText = label,
+                    Point = point
+                }, pbv.DataLabel);
             }
 
-            if (pbv.DataLabel != null) pbv.DataLabel.Text = label;
-
-            if (point.Open <= point.Close)
+            if (!DataLabels && pbv.DataLabel != null)
             {
-                BindingOperations.SetBinding(pbv.HighToLowLine, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(IncreaseBrushProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(IncreaseBrushProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(IncreaseBrushProperty), Source = this });
-            }
-            else
-            {
-                BindingOperations.SetBinding(pbv.HighToLowLine, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(DecreaseBrushProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(DecreaseBrushProperty), Source = this });
-                BindingOperations.SetBinding(pbv.OpenToCloseRectangle, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(DecreaseBrushProperty), Source = this });
+                Model.Chart.View.RemoveFromDrawMargin(pbv.DataLabel);
+                pbv.DataLabel = null;
             }
 
             return pbv;
@@ -219,15 +231,14 @@ namespace LiveCharts.Wpf
 
         private void InitializeDefuaults()
         {
-            SetValue(StrokeThicknessProperty, 1d);
-            SetValue(MaxColumnWidthProperty, 35d);
-            SetValue(MaxWidthProperty, 25d);
-            SetValue(IncreaseBrushProperty, new SolidColorBrush(Color.FromRgb(254, 178, 0)));
-            SetValue(DecreaseBrushProperty, new SolidColorBrush(Color.FromRgb(238, 83, 80)));
+            SetCurrentValue(StrokeThicknessProperty, 1d);
+            SetCurrentValue(MaxColumnWidthProperty, 35d);
+            SetCurrentValue(IncreaseBrushProperty, new SolidColorBrush(Color.FromRgb(76, 174, 80)));
+            SetCurrentValue(DecreaseBrushProperty, new SolidColorBrush(Color.FromRgb(238, 83, 80)));
 
             Func<ChartPoint, string> defaultLabel = x =>
-                string.Format("O: {0}, H: {1}, C: {2} L: {3}", x.Open, x.High, x.Close, x.Low);
-            SetValue(LabelPointProperty, defaultLabel);
+                string.Format("O: {0}, H: {1}, L: {2} C: {3}", x.Open, x.High, x.Low, x.Close);
+            SetCurrentValue(LabelPointProperty, defaultLabel);
 
             DefaultFillOpacity = 1;
         }

@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -46,9 +46,13 @@ namespace LiveCharts.Wpf
         /// Gets the chart the own the separator
         /// </summary>
         public ChartCore Chart { get; set; }
+        private AxisCore Axis { get; set; }
 
         #region Dependency Properties
 
+        /// <summary>
+        /// The stroke property
+        /// </summary>
         public static readonly DependencyProperty StrokeProperty = DependencyProperty.Register(
             "Stroke", typeof (Brush), typeof (Separator),
             new PropertyMetadata(default(Brush), CallChartUpdater()));
@@ -62,6 +66,9 @@ namespace LiveCharts.Wpf
             set { SetValue(StrokeProperty, value); }
         }
 
+        /// <summary>
+        /// The stroke thickness property
+        /// </summary>
         public static readonly DependencyProperty StrokeThicknessProperty = DependencyProperty.Register(
             "StrokeThickness", typeof (double), typeof (Separator),
             new PropertyMetadata(default(double), CallChartUpdater()));
@@ -75,6 +82,9 @@ namespace LiveCharts.Wpf
             set { SetValue(StrokeThicknessProperty, value); }
         }
 
+        /// <summary>
+        /// The stroke dash array property
+        /// </summary>
         public static readonly DependencyProperty StrokeDashArrayProperty = DependencyProperty.Register(
             "StrokeDashArray", typeof (DoubleCollection), typeof (Separator),
             new PropertyMetadata(default(DoubleCollection), CallChartUpdater()));
@@ -88,27 +98,70 @@ namespace LiveCharts.Wpf
             set { SetValue(StrokeDashArrayProperty, value); }
         }
 
+        /// <summary>
+        /// The step property
+        /// </summary>
         public static readonly DependencyProperty StepProperty = DependencyProperty.Register(
-            "Step", typeof (double?), typeof (Separator),
-            new PropertyMetadata(default(double?), CallChartUpdater()));
+            "Step", typeof (double), typeof (Separator),
+            new PropertyMetadata(double.NaN, CallChartUpdater()));
 
         /// <summary>
         /// Gets or sets separators step, this means the value between each line, default is null, when null this value is calculated automatically.
         /// </summary>
-        public double? Step
+        public double Step
         {
-            get { return (double?) GetValue(StepProperty); }
+            get { return (double) GetValue(StepProperty); }
             set { SetValue(StepProperty, value); }
+        }
+
+        /// <summary>
+        /// The actual step property
+        /// </summary>
+        public static readonly DependencyProperty ActualStepProperty = DependencyProperty.Register(
+            "ActualStep", typeof(double), typeof(Separator), new PropertyMetadata(default(double)));
+        /// <summary>
+        /// Gets the actual step.
+        /// </summary>
+        /// <value>
+        /// The actual step.
+        /// </value>
+        public double ActualStep
+        {
+            get { return Axis.S; }
+        }
+
+        /// <summary>
+        /// The axis orientation property
+        /// </summary>
+        public static readonly DependencyProperty AxisOrientationProperty = DependencyProperty.Register(
+            "AxisOrientation", typeof(AxisOrientation), typeof(Separator), new PropertyMetadata(default(AxisOrientation)));
+        /// <summary>
+        /// Gets or sets the element orientation ind the axis
+        /// </summary>
+        public AxisOrientation AxisOrientation
+        {
+            get { return (AxisOrientation)GetValue(AxisOrientationProperty); }
+            internal set { SetValue(AxisOrientationProperty, value); }
         }
 
         #endregion
 
-        public SeparatorConfigurationCore AsCoreElement(AxisCore axis)
+        /// <summary>
+        /// Ases the core element.
+        /// </summary>
+        /// <param name="axis">The axis.</param>
+        /// <param name="source">The source.</param>
+        /// <returns></returns>
+        public SeparatorConfigurationCore AsCoreElement(AxisCore axis, AxisOrientation source)
         {
+            AxisOrientation = source;
+            Chart = axis.Chart;
+            Axis = axis;
             return new SeparatorConfigurationCore(axis)
             {
                 IsEnabled = IsEnabled,
-                Step = Step
+                Step = Step,
+                Source = source
             };
         }
 

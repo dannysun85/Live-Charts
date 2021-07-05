@@ -4,114 +4,93 @@
 #addin Cake.Git
 
 //Variables
-var target = Argument ("target", "Default");
 var buildType = Argument("Configuration", "Release");
+var target = Argument ("target", "Default");
+var configuration = "AnyCPU";
 
-var corePath = "./Core/Core.csproj";
-var coreBin = "./bin/";
-var coreSpec = "./Core/Core.nuspec";
-var coreBinary = "./Core/bin/Release/LiveCharts.dll";
-
-var buildTags = new string[] { "Debug", "403", "45", "451", "452", "46", "461" };
-var buildDirectories = new string[] { "./bin/Debug", "./bin/net403", "./bin/net45", "./bin/net451", "./bin/net452", "./bin/net46", "./bin/net461" };
-var configurationList = new string[] { "Debug", "net40", "net45", "net451", "net452", "net46", "net461" };
-
-var wpfBinDirectory = "./WpfView/bin";
-var wpfPath = "./WpfView/wpfview.csproj";
-var wpfSpec = "./WpfView/WpfView.nuspec";
-var wpfBinary = "./WpfView/bin/net403/LiveCharts.Wpf.dll";
-
-var formsBinDirectory = "./WinFormsView/bin";
-var formsPath = "./WinFormsView/WinFormsView.csproj";
-var formsSpec = "./WinFormsView/WinFormsView.nuspec";
-var formsBinary = "./WinFormsView/bin/net403/LiveCharts.WinForms.dll";
-
-//Main Tasks
-
-//Print out configuration
 Task("OutputArguments")
-    .Does(() =>
+    .Does(() => 
     {
         Information("Target: " + target);
         Information("Build Type: " + buildType);
     });
 
-//Build Core
 Task("Core")
     .Does(() =>
     {
-        Information("-- Core - " + buildType.ToUpper() + " --");
-        var ouputDirectory = coreBin + buildType;
-        if(!DirectoryExists(ouputDirectory))
-        {
-            CreateDirectory(ouputDirectory);
-        }
+        Information("Building Core.PCL...");
+        BuildProject("./Core/Core.csproj", "./bin/Release", buildType, configuration, "v4.5");
 
-        BuildProject(corePath, ouputDirectory, buildType);
+        Information("Building Core.Net40...");
+        BuildProject("./Core40/Core40.csproj", "./bin/Net40", buildType, configuration, "v4.0");
         
-        if(buildType == "Release")
-        {
-            NugetPack(coreSpec, coreBinary);
-        }
+		Information("Building Core.Net45...");
+        BuildProject("./Core40/Core40.csproj", "./bin/Net45", buildType, configuration, "v4.5");
+
+        Information("Packing Core...");
+        NugetPack("./Core/Core.nuspec", "./Core/bin/Release/LiveCharts.dll");
+
         Information("-- Core Packed --");
     });
 
-//Build WPF
 Task("WPF")
     .Does(() =>
     {
-        if(!DirectoryExists(wpfBinDirectory))
-        {
-            CreateDirectory(wpfBinDirectory);
-        }
+        var wpfPath = "./WpfView/wpfview.csproj";
 
-        for(var r = 0; r < buildTags.Length; r++)
-        {
-            Information("-- WPF " + buildTags[r].ToUpper() + " --");
-            if(!DirectoryExists(buildDirectories[r]))
-            {
-                CreateDirectory(buildDirectories[r]);
-            }
-            BuildProject(wpfPath, buildDirectories[r], configurationList[r]);
-        }
+        Information("Building Wpf.Debug...");
+        BuildProject(wpfPath, "./bin/Debug", "Debug", configuration, "v4.0");
 
-        if(buildType == "Release")
-        {
-            NugetPack(wpfSpec, wpfBinary);
-        }
+        Information("Building Wpf.Net40...");
+        BuildProject(wpfPath, "./bin/net403", "Release", configuration, "v4.0");
+
+        Information("Building Wpf.Debug...");
+        BuildProject(wpfPath, "./bin/net45", "Release", configuration, "v4.5");
+
+        Information("Packing Wpf...");
+        NugetPack("./WpfView/WpfView.nuspec", "./WpfView/bin/net403/LiveCharts.Wpf.dll");
+        
         Information("-- WPF Packed --");
     });
 
 Task("WinForms")
     .Does(() => 
     {
-        if(!DirectoryExists(formsBinDirectory))
-        {
-            CreateDirectory(formsBinDirectory);
-        }
+        var formsPath = "./WinFormsView/WinFormsView.csproj";
 
-        for(var r = 0; r < buildTags.Length; r++)
-        {
-            Information("-- WinForms " + buildTags[r].ToUpper() + " --");
-            if(!DirectoryExists(buildDirectories[r]))
-            {
-                CreateDirectory(buildDirectories[r]);
-            }
-            BuildProject(formsPath, buildDirectories[r], configurationList[r]);
-        }
+        Information("Building WinForms.Debug...");
+        BuildProject(formsPath, "./bin/Debug", "Debug", configuration, "v4.0");
 
-        if(buildType == "Release")
-        {
-            NugetPack(formsSpec, formsBinary);
-        }
+        Information("Building WinForms.Net40...");
+        BuildProject(formsPath, "./bin/net403", "Release", configuration, "v4.0");
+
+        Information("Building WinForms.Debug...");
+        BuildProject(formsPath, "./bin/net45", "Release", configuration, "v4.5");
+
+        Information("Packing WinForms...");
+        NugetPack("./WinFormsView/WinFormsView.nuspec", "./WinFormsView/bin/net403/LiveCharts.WinForms.dll");
+
         Information("-- WinForms Packed --");
+    });
+
+Task("UWP")
+    .Does(() =>
+    {
+        Information("Building UWP...");        
+        BuildProject("./UwpView/UwpView.csproj", "./bin/AnyCPU", buildType, "AnyCPU");
+
+        Information("Packing UWP...");
+        NugetPack("./UwpView/UwpView.nuspec", "./UwpView/bin/AnyCPU/LiveCharts.Uwp.dll");
+
+        Information("-- UWP Packed --");
     });
 
 Task("Default")
     .IsDependentOn("OutputArguments")
 	.IsDependentOn("Core")
     .IsDependentOn("WPF")
-    .IsDependentOn("WinForms");
+    .IsDependentOn("WinForms")
+	.IsDependentOn("UWP");
 
 //Entry point for Cake build
 RunTarget (target);
@@ -119,22 +98,27 @@ RunTarget (target);
 //Helper Methods
 
 //Build a project
-public void BuildProject(string path, string outputPath, string configuration)
+public void BuildProject(string path, string outputPath, string configuration, 
+								string platform, string targetVersion = null)
 {
     Information("Building " + path);
     try
     {
-        DotNetBuild(path, settings =>
-        settings.SetConfiguration(configuration)
-        .WithProperty("Platform", "AnyCPU")
-        .WithTarget("Clean,Build")
-        .WithProperty("OutputPath", outputPath)
-        .SetVerbosity(Cake.Core.Diagnostics.Verbosity.Minimal)
-        );
+        DotNetBuild(path, settings => 
+		{ 
+			settings.SetConfiguration(configuration)
+				.WithProperty("Platform", platform)
+				.WithTarget("Clean,Build")
+				.WithProperty("OutputPath", outputPath)
+                .SetVerbosity(Cake.Core.Diagnostics.Verbosity.Minimal);
+
+            if (targetVersion != null) 
+				settings.WithProperty("TargetFrameworkVersion", targetVersion);
+        });
     }
     catch(Exception ex)
     {
-        Error("An error occured while trying to build {0} with {1}", path, configuration);
+        Error("An error occurred while trying to build {0} with {1}", path, configuration);
     }
 
     Information("Build completed");

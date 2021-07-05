@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -29,11 +29,18 @@ using LiveCharts.Dtos;
 
 namespace LiveCharts.Charts
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public abstract class ChartCore
     {
-
         #region Constructors
-        protected ChartCore(IChartView view, IChartUpdater updater)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ChartCore"/> class.
+        /// </summary>
+        /// <param name="view">The view.</param>
+        /// <param name="updater">The updater.</param>
+        protected ChartCore(IChartView view, ChartUpdater updater)
         {
             View = view;
             Updater = updater;
@@ -44,6 +51,9 @@ namespace LiveCharts.Charts
             DrawMargin.SetLeft += view.SetDrawMarginLeft;
         }
 
+        /// <summary>
+        /// Initializes the <see cref="ChartCore"/> class.
+        /// </summary>
         static ChartCore()
         {
             Configurations = new Charting();
@@ -53,85 +63,171 @@ namespace LiveCharts.Charts
 
         #region Properties 
 
+        /// <summary>
+        /// Gets or sets the configurations.
+        /// </summary>
+        /// <value>
+        /// The configurations.
+        /// </value>
         public static Charting Configurations { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether [series initialized].
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [series initialized]; otherwise, <c>false</c>.
+        /// </value>
         public bool SeriesInitialized { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether [are components loaded].
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [are components loaded]; otherwise, <c>false</c>.
+        /// </value>
+        public bool AreComponentsLoaded { get; set; }
+        /// <summary>
+        /// Gets or sets the view.
+        /// </summary>
+        /// <value>
+        /// The view.
+        /// </value>
         public IChartView View { get; set; }
-        public IChartUpdater Updater { get; set; }
+        /// <summary>
+        /// Gets or sets the updater.
+        /// </summary>
+        /// <value>
+        /// The updater.
+        /// </value>
+        public ChartUpdater Updater { get; set; }
+        /// <summary>
+        /// Gets or sets the size of the control.
+        /// </summary>
+        /// <value>
+        /// The size of the control.
+        /// </value>
         public CoreSize ControlSize { get; set; }
+        /// <summary>
+        /// Gets or sets the draw margin.
+        /// </summary>
+        /// <value>
+        /// The draw margin.
+        /// </value>
         public CoreRectangle DrawMargin { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating whether this instance has unitary points.
+        /// </summary>
+        /// <value>
+        /// <c>true</c> if this instance has unitary points; otherwise, <c>false</c>.
+        /// </value>
         public bool HasUnitaryPoints { get; set; }
+        /// <summary>
+        /// Gets a value indicating whether [requires hover shape].
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [requires hover shape]; otherwise, <c>false</c>.
+        /// </value>
         public bool RequiresHoverShape
-        {
-            get { return View != null && (View.HasTooltip || View.HasDataClickEventAttached || View.Hoverable); }
-        }
-
-        public List<AxisCore> AxisX { get; set; }
-        public List<AxisCore> AxisY { get; set; }
-
-        public CoreLimit Value1CoreLimit { get; set; }
-        public CoreLimit Value2CoreLimit { get; set; }
-        public CoreLimit Value3CoreLimit { get; set; }
-
-        public int CurrentColorIndex { get; set; }
-
-        public AxisOrientation PivotZoomingAxis { get; set; }
-        public CorePoint PanOrigin { get; set; }
-
-        private bool IsZooming
         {
             get
             {
-                var animationsSpeed = View.DisableAnimations ? 0 : View.AnimationsSpeed.TotalMilliseconds;
-                return (DateTime.Now - RequestedZoomAt).TotalMilliseconds < animationsSpeed;
+                return View != null &&
+                       (View.HasTooltip || View.HasDataClickEventAttached || View.Hoverable);
             }
         }
 
-        private DateTime RequestedZoomAt { get; set; }
+        /// <summary>
+        /// Gets or sets the axis x.
+        /// </summary>
+        /// <value>
+        /// The axis x.
+        /// </value>
+        public List<AxisCore> AxisX { get; set; }
+        /// <summary>
+        /// Gets or sets the axis y.
+        /// </summary>
+        /// <value>
+        /// The axis y.
+        /// </value>
+        public List<AxisCore> AxisY { get; set; }
+
+        /// <summary>
+        /// Gets or sets the x limit.
+        /// </summary>
+        /// <value>
+        /// The x limit.
+        /// </value>
+        public CoreLimit XLimit { get; set; }
+        /// <summary>
+        /// Gets or sets the y limit.
+        /// </summary>
+        /// <value>
+        /// The y limit.
+        /// </value>
+        public CoreLimit YLimit { get; set; }
+        /// <summary>
+        /// Gets or sets the w limit.
+        /// </summary>
+        /// <value>
+        /// The w limit.
+        /// </value>
+        public CoreLimit WLimit { get; set; }
+
+        /// <summary>
+        /// Gets or sets the index of the current color.
+        /// </summary>
+        /// <value>
+        /// The index of the current color.
+        /// </value>
+        public int CurrentColorIndex { get; set; }
+
+        /// <summary>
+        /// Gets or sets the pan origin.
+        /// </summary>
+        /// <value>
+        /// The pan origin.
+        /// </value>
+        public CorePoint PanOrigin { get; set; }
 
         #endregion
 
         #region Public Methods
 
+        /// <summary>
+        /// Prepares the axes.
+        /// </summary>
         public virtual void PrepareAxes()
         {
             for (var index = 0; index < AxisX.Count; index++)
             {
-                var xi = AxisX[index];
-
-                xi.MaxLimit = xi.MaxValue ??
-                              View.ActualSeries
-                                  .Where(series => series.Values != null && series.ScalesXAt == index)
-                                  .Select(series => series.Values.GetTracker(series).Limit1.Max)
-                                  .DefaultIfEmpty(0).Max();
-                xi.MinLimit = xi.MinValue ??
-                              View.ActualSeries
-                                  .Where(series => series.Values != null && series.ScalesXAt == index)
-                                  .Select(series => series.Values.GetTracker(series).Limit1.Min)
-                                  .DefaultIfEmpty(0).Min();
+                SetAxisLimits(
+                    AxisX[index],
+                    View.ActualSeries
+                        // ReSharper disable once AccessToModifiedClosure
+                        .Where(series => series.Values != null && series.ScalesXAt == index).ToArray(),
+                    AxisOrientation.X);
             }
 
             for (var index = 0; index < AxisY.Count; index++)
             {
-                var yi = AxisY[index];
-
-                yi.MaxLimit = yi.MaxValue ??
-                              View.ActualSeries
-                                  .Where(series => series.Values != null && series.ScalesYAt == index)
-                                  .Select(series => series.Values.GetTracker(series).Limit2.Max)
-                                  .DefaultIfEmpty(0).Max();
-                yi.MinLimit = yi.MinValue ??
-                              View.ActualSeries
-                                  .Where(series => series.Values != null && series.ScalesYAt == index)
-                                  .Select(series => series.Values.GetTracker(series).Limit2.Min)
-                                  .DefaultIfEmpty(0).Min();
+                SetAxisLimits(
+                    AxisY[index],
+                    View.ActualSeries
+                        // ReSharper disable once AccessToModifiedClosure
+                        .Where(series => series.Values != null && series.ScalesYAt == index).ToArray(),
+                    AxisOrientation.Y);
             }
         }
 
+        /// <summary>
+        /// Runs the specialized chart components.
+        /// </summary>
         public virtual void RunSpecializedChartComponents()
         {
             
         }
 
+        /// <summary>
+        /// Calculates the components and margin.
+        /// </summary>
         public void CalculateComponentsAndMargin()
         {
             var curSize = new CoreRectangle(0, 0, ControlSize.Width, ControlSize.Height);
@@ -142,27 +238,27 @@ namespace LiveCharts.Charts
 
             for (int index = 0; index < AxisY.Count; index++)
             {
-                var yi = AxisY[index];
-                var titleSize = yi.View.UpdateTitle(this, -90d);
-                var biggest = yi.PrepareChart(AxisOrientation.Y, this);
+                var ax = AxisY[index];
+                var titleSize = ax.View.UpdateTitle(this, -90d);
+                var biggest = ax.PrepareChart(AxisOrientation.Y, this);
 
                 var x = curSize.Left;
 
-                if (yi.Position == AxisPosition.LeftBottom)
+                if (ax.Position == AxisPosition.LeftBottom)
                 {
-                    yi.View.SetTitleLeft(x);
+                    ax.View.SetTitleLeft(x);
                     curSize.Left += titleSize.Height + biggest.Width + padding;
                     curSize.Width -= (titleSize.Height + biggest.Width + padding);
-                    yi.Tab = curSize.Left;
+                    ax.Tab = curSize.Left;
                 }
                 else
                 {
-                    yi.View.SetTitleLeft(x + curSize.Width - titleSize.Height);
+                    ax.View.SetTitleLeft(x + curSize.Width - titleSize.Height);
                     curSize.Width -= (titleSize.Height + biggest.Width + padding);
-                    yi.Tab = curSize.Left + curSize.Width;
+                    ax.Tab = curSize.Left + curSize.Width;
                 }
 
-                var uw = yi.EvaluatesUnitWidth ? ChartFunctions.GetUnitWidth(AxisOrientation.Y, this, index)/2 : 0;
+                var uw = ax.EvaluatesUnitWidth ? ChartFunctions.GetUnitWidth(AxisOrientation.Y, this, index)/2 : 0;
 
                 var topE = biggest.Top - uw;
                 if (topE> curSize.Top)
@@ -230,28 +326,6 @@ namespace LiveCharts.Charts
                 }
             }
 
-
-            //if (curSize.Left < l)
-            //{
-            //    var cor = l - curSize.Left;
-            //    curSize.Left = l;
-            //    curSize.Width -= cor;
-            //    foreach (var yi in AxisY.Where(x => x.Position == AxisPosition.LeftBottom))
-            //    {
-            //        yi.View.SetTitleLeft(yi.View.GetTitleLeft() + cor);
-            //    }
-            //}
-            //var rp = ChartControlSize.Width - curSize.Left - curSize.Width;
-            //if (r > rp)
-            //{
-            //    var cor = r - rp;
-            //    curSize.Width -= cor;
-            //    foreach (var yi in AxisY.Where(x => x.Position == AxisPosition.RightTop))
-            //    {
-            //        yi.View.SetTitleLeft(yi.View.GetTitleLeft() - cor);
-            //    }
-            //}
-
             DrawMargin.Top = curSize.Top;
             DrawMargin.Left = curSize.Left;
             DrawMargin.Width = curSize.Width;
@@ -259,19 +333,39 @@ namespace LiveCharts.Charts
 
             for (var index = 0; index < AxisY.Count; index++)
             {
-                var yi = AxisY[index];
-                yi.UpdateSeparators(AxisOrientation.Y, this, index);
-                yi.View.SetTitleTop(curSize.Top + curSize.Height*.5 + yi.View.GetLabelSize().Width*.5);
+                var ax = AxisY[index];
+                var pr = ChartFunctions.FromPlotArea(ax.MaxPointRadius, AxisOrientation.Y, this, index) -
+                         ChartFunctions.FromPlotArea(0, AxisOrientation.Y, this, index);
+                if (!double.IsNaN(pr))
+                {
+                    ax.BotLimit += pr;
+                    ax.TopLimit -= pr;
+                }
+                ax.UpdateSeparators(AxisOrientation.Y, this, index);
+                ax.View.SetTitleTop(curSize.Top + curSize.Height*.5 + ax.View.GetLabelSize().Width*.5);
             }
 
             for (var index = 0; index < AxisX.Count; index++)
             {
                 var xi = AxisX[index];
+                var pr = ChartFunctions.FromPlotArea(xi.MaxPointRadius, AxisOrientation.X, this, index) -
+                         ChartFunctions.FromPlotArea(0, AxisOrientation.X, this, index);
+                if (!double.IsNaN(pr))
+                {
+                    xi.BotLimit -= pr;
+                    xi.TopLimit += pr;
+                }
                 xi.UpdateSeparators(AxisOrientation.X, this, index);
                 xi.View.SetTitleLeft(curSize.Left + curSize.Width*.5 - xi.View.GetLabelSize().Width*.5);
             }
         }
 
+        /// <summary>
+        /// Places the legend.
+        /// </summary>
+        /// <param name="drawMargin">The draw margin.</param>
+        /// <returns></returns>
+        /// <exception cref="System.ArgumentOutOfRangeException"></exception>
         public CoreRectangle PlaceLegend(CoreRectangle drawMargin)
         {
             var legendSize = View.LoadLegend();
@@ -310,276 +404,352 @@ namespace LiveCharts.Charts
             return drawMargin;
         }
 
+        /// <summary>
+        /// Zooms the in.
+        /// </summary>
+        /// <param name="pivot">The pivot.</param>
         public void ZoomIn(CorePoint pivot)
         {
-            View.HideTooltop();
+            if (AxisX == null || AxisY == null) return;
 
-            if (IsZooming) return;
+            View.HideTooltip();
 
-            RequestedZoomAt = DateTime.Now;
-
-            pivot = new CorePoint(
-                ChartFunctions.FromDrawMargin(pivot.X, AxisOrientation.X, this),
-                ChartFunctions.FromDrawMargin(pivot.Y, AxisOrientation.Y, this));
+            var speed = View.ZoomingSpeed < 0.1 ? 0.1 : (View.ZoomingSpeed > 0.95 ? 0.95 : View.ZoomingSpeed);
 
             if (View.Zoom == ZoomingOptions.X || View.Zoom == ZoomingOptions.Xy)
             {
-                foreach (var xi in AxisX)
+                for (var index = 0; index < AxisX.Count; index++)
                 {
-                    var max = xi.MaxValue ?? xi.MaxLimit;
-                    var min = xi.MinValue ?? xi.MinLimit;
+                    var xi = AxisX[index];
+
+                    var px = ChartFunctions.FromPlotArea(pivot.X, AxisOrientation.X, this, index);
+
+                    var max = double.IsNaN(xi.View.MaxValue) ? xi.TopLimit : xi.View.MaxValue;
+                    var min = double.IsNaN(xi.View.MinValue) ? xi.BotLimit : xi.View.MinValue;
                     var l = max - min;
-                    var rMin = (pivot.X - min) / l;
+
+                    var rMin = (px - min) / l;
                     var rMax = 1 - rMin;
 
-                    xi.View.MinValue = min + rMin * xi.S;
-                    xi.View.MaxValue = max - rMax * xi.S;
-                }
-            }
-            else
-            {
-                foreach (var xi in AxisX)
-                {
-                    xi.View.MinValue = null;
-                    xi.View.MaxValue = null;
+                    var target = l * speed;
+                    if (target < xi.View.MinRange) return;
+                    var mint = px - target * rMin;
+                    var maxt = px + target * rMax;
+                    xi.View.SetRange(mint, maxt);
                 }
             }
 
             if (View.Zoom == ZoomingOptions.Y || View.Zoom == ZoomingOptions.Xy)
             {
-                foreach (var yi in AxisY)
+                for (var index = 0; index < AxisY.Count; index++)
                 {
-                    var max = yi.MaxValue ?? yi.MaxLimit;
-                    var min = yi.MinValue ?? yi.MinLimit;
+                    var ax = AxisY[index];
+
+                    var py = ChartFunctions.FromPlotArea(pivot.Y, AxisOrientation.Y, this, index);
+
+                    var max = double.IsNaN(ax.View.MaxValue) ? ax.TopLimit : ax.View.MaxValue;
+                    var min = double.IsNaN(ax.View.MinValue) ? ax.BotLimit : ax.View.MinValue;
                     var l = max - min;
-                    var rMin = (pivot.Y - min) / l;
+                    var rMin = (py - min) / l;
                     var rMax = 1 - rMin;
 
-                    yi.View.MinValue = min + rMin * yi.S;
-                    yi.View.MaxValue = max - rMax * yi.S;
+                    var target = l * speed;
+                    if (target < ax.View.MinRange) return;
+                    var mint = py - target * rMin;
+                    var maxt = py + target * rMax;
+                    ax.View.SetRange(mint, maxt);
                 }
             }
-            else
-            {
-                foreach (var yi in AxisY)
-                {
-                    yi.View.MinValue = null;
-                    yi.View.MaxValue = null;
-                }
-            }
-
-            Updater.Run(false, true);
         }
 
+        /// <summary>
+        /// Zooms the out.
+        /// </summary>
+        /// <param name="pivot">The pivot.</param>
         public void ZoomOut(CorePoint pivot)
         {
-            View.HideTooltop();
+            View.HideTooltip();
 
-            if (IsZooming) return;
-
-            RequestedZoomAt = DateTime.Now;
-
-            var dataPivot = new CorePoint(
-                ChartFunctions.FromDrawMargin(pivot.X, AxisOrientation.X, this),
-                ChartFunctions.FromDrawMargin(pivot.Y, AxisOrientation.Y, this));
+            var speed = View.ZoomingSpeed < 0.1 ? 0.1 : (View.ZoomingSpeed > 0.95 ? 0.95 : View.ZoomingSpeed);
 
             if (View.Zoom == ZoomingOptions.X || View.Zoom == ZoomingOptions.Xy)
             {
-                foreach (var xi in AxisX)
+                for (var index = 0; index < AxisX.Count; index++)
                 {
-                    var max = xi.MaxValue ?? xi.MaxLimit;
-                    var min = xi.MinValue ?? xi.MinLimit;
+                    var xi = AxisX[index];
+
+                    var px = ChartFunctions.FromPlotArea(pivot.X, AxisOrientation.X, this, index);
+
+                    var max = double.IsNaN(xi.View.MaxValue) ? xi.TopLimit : xi.View.MaxValue;
+                    var min = double.IsNaN(xi.View.MinValue) ? xi.BotLimit : xi.View.MinValue;
                     var l = max - min;
-                    var rMin = (dataPivot.X - min) / l;
+                    var rMin = (px - min) / l;
                     var rMax = 1 - rMin;
 
-                    xi.View.MinValue = min - rMin * xi.S;
-                    xi.View.MaxValue = max + rMax * xi.S;
+                    var target = l * (1 / speed);
+                    if (target > xi.View.MaxRange) return;
+                    var mint = px- target * rMin;
+                    var maxt = px + target * rMax;
+                    xi.View.SetRange(mint, maxt);
                 }
             }
 
             if (View.Zoom == ZoomingOptions.Y || View.Zoom == ZoomingOptions.Xy)
             {
-                foreach (var yi in AxisY)
+                for (var index = 0; index < AxisY.Count; index++)
                 {
-                    var max = yi.MaxValue ?? yi.MaxLimit;
-                    var min = yi.MinValue ?? yi.MinLimit;
+                    var ax = AxisY[index];
+
+                    var py = ChartFunctions.FromPlotArea(pivot.Y, AxisOrientation.Y, this, index);
+                    
+                    var max = double.IsNaN(ax.View.MaxValue) ? ax.TopLimit : ax.View.MaxValue;
+                    var min = double.IsNaN(ax.View.MinValue) ? ax.BotLimit : ax.View.MinValue;
                     var l = max - min;
-                    var rMin = (dataPivot.Y - min) / l;
+                    var rMin = (py - min) / l;
                     var rMax = 1 - rMin;
 
-                    yi.View.MinValue = min - rMin * yi.S;
-                    yi.View.MaxValue = max + rMax * yi.S;
+                    var target = l * (1 / speed);
+                    if (target > ax.View.MaxRange) return;
+                    var mint = py - target * rMin;
+                    var maxt = py + target * rMax;
+                    ax.View.SetRange(mint, maxt);
                 }
             }
-
-            Updater.Run(false, true);
         }
 
+        /// <summary>
+        /// Clears the zoom.
+        /// </summary>
         public void ClearZoom()
         {
-            foreach (var xi in AxisX)
-            {
-                xi.View.MinValue = null;
-                xi.View.MaxValue = null;
-            }
-
-            foreach (var yi in AxisY)
-            {
-                yi.View.MinValue = null;
-                yi.View.MaxValue = null;
-            }
-
-            Updater.Run();
+            foreach (var xi in AxisX) xi.View.SetRange(double.NaN, double.NaN);
+            foreach (var ax in AxisY) ax.View.SetRange(double.NaN, double.NaN);
         }
 
+        /// <summary>
+        /// Drags the specified delta.
+        /// </summary>
+        /// <param name="delta">The delta.</param>
         public void Drag(CorePoint delta)
         {
-            if (PivotZoomingAxis == AxisOrientation.None) return;
+            if (View.Pan == PanningOptions.Unset && View.Zoom == ZoomingOptions.None ||
+                View.Pan == PanningOptions.None) return;
 
-            if (View.Zoom == ZoomingOptions.X || View.Zoom == ZoomingOptions.Xy)
+            var px = View.Pan == PanningOptions.Unset &&
+                     (View.Zoom == ZoomingOptions.X || View.Zoom == ZoomingOptions.Xy);
+            px = px || View.Pan == PanningOptions.X || View.Pan == PanningOptions.Xy;
+
+            if (px)
             {
-                foreach (var xi in AxisX)
+                for (var index = 0; index < AxisX.Count; index++)
                 {
-                    xi.View.MaxValue = (xi.MaxValue ?? xi.MaxLimit) + delta.X;
-                    xi.View.MinValue = (xi.MinValue ?? xi.MinLimit) + delta.X;
+                    var xi = AxisX[index];
+                    var dx = ChartFunctions.FromPlotArea(delta.X, AxisOrientation.X, this, index) -
+                             ChartFunctions.FromPlotArea(0, AxisOrientation.X, this, index);
+
+                    xi.View.SetRange((double.IsNaN(xi.View.MinValue) ? xi.BotLimit : xi.View.MinValue) + dx,
+                        (double.IsNaN(xi.View.MaxValue) ? xi.TopLimit : xi.View.MaxValue) + dx);
                 }
             }
 
-            if (View.Zoom == ZoomingOptions.Y || View.Zoom == ZoomingOptions.Xy)
+            var py = View.Pan == PanningOptions.Unset &&
+                     (View.Zoom == ZoomingOptions.Y || View.Zoom == ZoomingOptions.Xy);
+            py = py || View.Pan == PanningOptions.Y || View.Pan == PanningOptions.Xy;
+            if (py)
             {
-                foreach (var yi in AxisY)
+                for (var index = 0; index < AxisY.Count; index++)
                 {
-                    yi.View.MaxValue = (yi.MaxValue ?? yi.MaxLimit) + delta.Y;
-                    yi.View.MinValue = (yi.MinValue ?? yi.MinLimit) + delta.Y;
+                    var ax = AxisY[index];
+                    var dy = ChartFunctions.FromPlotArea(delta.Y, AxisOrientation.Y, this, index) -
+                             ChartFunctions.FromPlotArea(0, AxisOrientation.Y, this, index);
+
+                    ax.View.SetRange((double.IsNaN(ax.View.MinValue) ? ax.BotLimit : ax.View.MinValue) + dy,
+                        (double.IsNaN(ax.View.MaxValue) ? ax.TopLimit : ax.View.MaxValue) + dy);
                 }
             }
-            
-            Updater.Run(false, true);
         }
 
         #endregion
 
         #region Protected
 
+        /// <summary>
+        /// Stacks the points.
+        /// </summary>
+        /// <param name="stackables">The stackables.</param>
+        /// <param name="stackAt">The stack at.</param>
+        /// <param name="stackIndex">Index of the stack.</param>
+        /// <param name="mode">The mode.</param>
         protected void StackPoints(IEnumerable<ISeriesView> stackables, AxisOrientation stackAt, int stackIndex,
             StackMode mode = StackMode.Values)
         {
-            var stackedColumns = stackables.Select(x => x.ActualValues.GetPoints(x).ToArray()).ToArray();
+            var groupedStackables = stackables.GroupBy(s => s is IGroupedStackedSeriesView ? (s as IGroupedStackedSeriesView).Grouping : 0).ToList();
 
-            var maxI = stackedColumns.Select(x => x.Length).DefaultIfEmpty(0).Max();
-
-            for (var i = 0; i < maxI; i++)
+            foreach (var groupedStack in groupedStackables)
             {
-                var cols = stackedColumns
-                    .Select(x => x.Length > i
-                        ? new StackedSum(Pull(x[i], stackAt))
-                        : new StackedSum()).ToArray();
+                var stackedColumns = groupedStack.SelectMany(x => x.ActualValues.GetPoints(x))
+                .GroupBy(x => stackAt == AxisOrientation.X ? x.Y : x.X);
 
-                var sum = new StackedSum
+                double mostLeft = 0, mostRight = 0;
+
+                foreach (var column in stackedColumns)
                 {
-                    Left = cols.Select(x => x.Left).DefaultIfEmpty(0).Sum(),
-                    Right = cols.Select(x => x.Right).DefaultIfEmpty(0).Sum()
-                };
+                    double sumLeft = 0, sumRight = 0;
+
+                    foreach (var item in column)
+                    {
+                        var s = stackAt == AxisOrientation.X ? item.X : item.Y;
+                        if (s < 0)
+                            sumLeft += s;
+                        else
+                            sumRight += s;
+                    }
+
+                    var lastLeft = 0d;
+                    var lastRight = 0d;
+                    var leftPart = 0d;
+                    var rightPart = 0d;
+
+                    foreach (var point in column)
+                    {
+                        var pulled = stackAt == AxisOrientation.X ? point.X : point.Y;
+
+                        //notice using (pulled < 0) or (pulled <= 0) could cause an issue similar to
+                        //https://github.com/beto-rodriguez/Live-Charts/issues/231
+                        //from that issue I changed <= to <
+                        //only because it is more common to use positive values than negative
+                        //you could face a similar issue if you are stacking only negative values
+                        //a work around is forcing (pulled < 0) to be true,
+                        //instead of using zero values, use -0.000000001/
+
+                        if (pulled < 0)
+                        {
+                            point.From = lastLeft;
+                            point.To = lastLeft + pulled;
+                            point.Sum = sumLeft;
+                            point.Participation = (point.To - point.From) / point.Sum;
+                            point.Participation = double.IsNaN(point.Participation)
+                                ? 0
+                                : point.Participation;
+                            leftPart += point.Participation;
+                            point.StackedParticipation = leftPart;
+
+                            lastLeft = point.To;
+                        }
+                        else
+                        {
+                            point.From = lastRight;
+                            point.To = lastRight + pulled;
+                            point.Sum = sumRight;
+                            point.Participation = (point.To - point.From) / point.Sum;
+                            point.Participation = double.IsNaN(point.Participation)
+                                ? 0
+                                : point.Participation;
+                            rightPart += point.Participation;
+                            point.StackedParticipation = rightPart;
+
+                            lastRight = point.To;
+                        }
+                    }
+
+                    if (sumLeft < mostLeft) mostLeft = sumLeft;
+                    if (sumRight > mostRight) mostRight = sumRight;
+                }
 
                 if (stackAt == AxisOrientation.X)
                 {
+                    var ax = AxisX[stackIndex];
+
                     if (mode == StackMode.Percentage)
                     {
-                        AxisX[stackIndex].MinLimit = 0;
-                        AxisX[stackIndex].MaxLimit = 1;
+                        if (double.IsNaN(ax.MinValue)) ax.BotLimit = 0;
+                        if (double.IsNaN(ax.MaxValue)) ax.TopLimit = 1;
                     }
                     else
                     {
-                        if (sum.Left < AxisX[stackIndex].MinLimit)
+                        if (mostLeft < ax.BotLimit)
                             // ReSharper disable once CompareOfFloatsByEqualityOperator
-                            AxisX[stackIndex].MinLimit = sum.Left == 0
-                                ? 0
-                                : ((int)(sum.Left / AxisX[stackIndex].S) - 1) * AxisX[stackIndex].S;
-                        if (sum.Right > AxisX[stackIndex].MaxLimit)
+                            if (double.IsNaN(ax.MinValue))
+                                ax.BotLimit = mostLeft == 0.0
+                                    ? 0.0
+                                    : Math.Floor(mostLeft/ax.S)*ax.S;
+                        if (mostRight > ax.TopLimit)
                             // ReSharper disable once CompareOfFloatsByEqualityOperator
-                            AxisX[stackIndex].MaxLimit = sum.Right == 0
-                                ? 0
-                                : ((int)(sum.Right / AxisX[stackIndex].S) + 1) * AxisX[stackIndex].S;
+                            if (double.IsNaN(ax.MaxValue))
+                                ax.TopLimit = mostRight == 0.0
+                                    ? 0.0
+                                    : (Math.Floor(mostRight/ax.S) + 1.0) *ax.S;
                     }
                 }
+
                 if (stackAt == AxisOrientation.Y)
                 {
+                    var ay = AxisY[stackIndex];
+
                     if (mode == StackMode.Percentage)
                     {
-                        AxisY[stackIndex].MinLimit = 0;
-                        AxisY[stackIndex].MaxLimit = 1;
+                        if (double.IsNaN(ay.MinValue)) ay.BotLimit = 0;
+                        if (double.IsNaN(ay.MaxValue)) ay.TopLimit = 1;
                     }
                     else
                     {
-                        if (sum.Left < AxisY[stackIndex].MinLimit)
+                        if (mostLeft < ay.BotLimit)
                             // ReSharper disable once CompareOfFloatsByEqualityOperator
-                            AxisY[stackIndex].MinLimit = sum.Left == 0
-                                ? 0
-                                : ((int)(sum.Left / AxisY[stackIndex].S) - 1) * AxisY[stackIndex].S;
-                        if (sum.Right > AxisY[stackIndex].MaxLimit)
+                            if (double.IsNaN(ay.MinValue))
+                                ay.BotLimit = mostLeft == 0.0
+                                    ? 0.0
+                                    : Math.Floor(mostLeft/ay.S)*ay.S;
+                        if (mostRight > ay.TopLimit)
                             // ReSharper disable once CompareOfFloatsByEqualityOperator
-                            AxisY[stackIndex].MaxLimit = sum.Right == 0
-                                ? 0
-                                : ((int)(sum.Right / AxisY[stackIndex].S) + 1) * AxisY[stackIndex].S;
-                    }
-                }
-
-                var lastLeft = 0d;
-                var lastRight = 0d;
-                var leftPart = 0d;
-                var rightPart = 0d;
-
-                foreach (var col in stackedColumns)
-                {
-                    if (i >= col.Length) continue;
-                    var point = col[i];
-                    var pulled = Pull(point, stackAt);
-
-                    //notice using (pulled < 0) or (pulled <= 0) could cause an issue similar to
-                    //https://github.com/beto-rodriguez/Live-Charts/issues/231
-                    //from that issue I changed <= to <
-                    //only because it is more common to use positive values than negative
-                    //you could face a similar issue if you are stacking only negative values
-                    //a work around is forcing (pulled < 0) to be true,
-                    //instead of using zero values, use -0.000000001/
-                    if (pulled < 0)
-                    {
-                        point.From = lastLeft;
-                        point.To = lastLeft + pulled;
-                        point.Sum = sum.Left;
-                        point.Participation = (point.To - point.From) / point.Sum;
-                        point.Participation = double.IsNaN(point.Participation)
-                            ? 0
-                            : point.Participation;
-                        leftPart += point.Participation;
-                        point.StackedParticipation = leftPart;
-
-                        lastLeft = point.To;
-                    }
-                    else
-                    {
-                        point.From = lastRight;
-                        point.To = lastRight + pulled;
-                        point.Sum = sum.Right;
-                        point.Participation = (point.To - point.From)/point.Sum;
-                        point.Participation = double.IsNaN(point.Participation)
-                            ? 0
-                            : point.Participation;
-                        rightPart += point.Participation;
-                        point.StackedParticipation = rightPart;
-
-                        lastRight = point.To;
+                            if (double.IsNaN(ay.MaxValue))
+                                ay.TopLimit = mostRight == 0.0
+                                    ? 0.0
+                                    : (Math.Floor(mostRight/ay.S) + 1.0) *ay.S;
                     }
                 }
             }
         }
+        #endregion
 
-        protected static double Pull(ChartPoint point, AxisOrientation source)
+        #region Privates
+        private static void SetAxisLimits(AxisCore ax, IList<ISeriesView> series, AxisOrientation orientation)
         {
-            return source == AxisOrientation.Y ? point.Y : point.X;
-        }
+            var first = new CoreLimit();
+            var firstR = 0d;
 
+            if (series.Count > 0)
+            {
+                first = orientation == AxisOrientation.X
+                    ? series[0].Values.GetTracker(series[0]).XLimit
+                    : series[0].Values.GetTracker(series[0]).YLimit;
+                var view = series[0] as IAreaPoint;
+                firstR = view != null ? view.GetPointDiameter() : 0;
+            }
+            
+            //                     [ max, min, pointRadius ]
+            var boundries = new[] {first.Max, first.Min, firstR};
+
+            for (var index = 1; index < series.Count; index++)
+            {
+                var seriesView = series[index];
+                var tracker = seriesView.Values.GetTracker(seriesView);
+                var limit = orientation == AxisOrientation.X ? tracker.XLimit : tracker.YLimit;
+                var view = seriesView as IAreaPoint;
+                var radius = view != null ? view.GetPointDiameter() : 0;
+
+                if (limit.Max > boundries[0]) boundries[0] = limit.Max;
+                if (limit.Min < boundries[1]) boundries[1] = limit.Min;
+                if (radius > boundries[2]) boundries[2] = radius;
+            }
+
+            ax.TopSeriesLimit = boundries[0];
+            ax.BotSeriesLimit = boundries[1];
+
+            ax.TopLimit = double.IsNaN(ax.MaxValue) ? boundries[0] : ax.MaxValue;
+            ax.BotLimit = double.IsNaN(ax.MinValue) ? boundries[1] : ax.MinValue;
+
+            ax.MaxPointRadius = boundries[2];
+        }
         #endregion
     }
 }

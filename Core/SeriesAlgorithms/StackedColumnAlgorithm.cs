@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -25,12 +25,22 @@ using LiveCharts.Defaults;
 using LiveCharts.Definitions.Points;
 using LiveCharts.Definitions.Series;
 using LiveCharts.Dtos;
+using System.Linq;
 
 namespace LiveCharts.SeriesAlgorithms
 {
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="LiveCharts.SeriesAlgorithm" />
+    /// <seealso cref="LiveCharts.Definitions.Series.ICartesianSeries" />
     public class StackedColumnAlgorithm : SeriesAlgorithm , ICartesianSeries
     {
         private readonly IStackModelableSeriesView _stackModelable;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StackedColumnAlgorithm"/> class.
+        /// </summary>
+        /// <param name="view">The view.</param>
         public StackedColumnAlgorithm(ISeriesView view) : base(view)
         {
             SeriesOrientation = SeriesOrientation.Horizontal;
@@ -38,6 +48,9 @@ namespace LiveCharts.SeriesAlgorithms
             PreferredSelectionMode = TooltipSelectionMode.SharedXValues;
         }
 
+        /// <summary>
+        /// Updates this instance.
+        /// </summary>
         public override void Update()
         {
             var castedSeries = (IStackedColumnSeriesView) View;
@@ -45,23 +58,25 @@ namespace LiveCharts.SeriesAlgorithms
             var padding = castedSeries.ColumnPadding;
 
             var totalSpace = ChartFunctions.GetUnitWidth(AxisOrientation.X, Chart, View.ScalesXAt) - padding;
-            var singleColWidth = totalSpace;
+            var groups = Chart.View.ActualSeries.Select(s => (s as IStackedColumnSeriesView)?.Grouping).Distinct().ToList();
+            var singleColWidth = totalSpace / groups.Count();
 
             double exceed = 0;
+            var seriesPosition = groups.IndexOf(castedSeries.Grouping);
 
             if (singleColWidth > castedSeries.MaxColumnWidth)
             {
-                exceed = (singleColWidth - castedSeries.MaxColumnWidth)/2;
+                exceed = (singleColWidth - castedSeries.MaxColumnWidth) * groups.Count() / 2;
                 singleColWidth = castedSeries.MaxColumnWidth;
             }
 
-            var relativeLeft = padding + exceed;
+            var relativeLeft = padding + exceed + singleColWidth * (seriesPosition);
 
-            var startAt = CurrentYAxis.MinLimit >= 0 && CurrentYAxis.MaxLimit > 0
-                ? CurrentYAxis.MinLimit                                            
-                : (CurrentYAxis.MinLimit < 0 && CurrentYAxis.MaxLimit <= 0          
-                ? CurrentYAxis.MaxLimit                                         
-                    : 0);                                                         
+            var startAt = CurrentYAxis.FirstSeparator >= 0 && CurrentYAxis.LastSeparator > 0
+                ? CurrentYAxis.FirstSeparator
+                : (CurrentYAxis.FirstSeparator < 0 && CurrentYAxis.LastSeparator <= 0
+                ? CurrentYAxis.LastSeparator
+                    : 0);
 
             var zero = ChartFunctions.ToDrawMargin(startAt, AxisOrientation.Y, Chart, View.ScalesYAt);
 
@@ -78,7 +93,7 @@ namespace LiveCharts.SeriesAlgorithms
                 if (double.IsNaN(from)) from = 0;
                 if (double.IsNaN(to)) to = 0;
 
-                chartPoint.View = View.GetPointView(chartPoint.View, chartPoint,
+                chartPoint.View = View.GetPointView(chartPoint,
                     View.DataLabels
                         ? (chartPoint.Participation > 0.05
                             ? View.GetLabelPointFormatter()(chartPoint)

@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -24,59 +24,50 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
-using System.Xml.Linq;
-using LiveCharts.Helpers;
 using LiveCharts.Maps;
 
 namespace LiveCharts.Wpf.Maps
 {
-    public static class MapResolver
+    internal static class MapResolver
     {
-        public static SvgMap Get(LiveCharts.Maps.Maps map)
+        public static LvcMap Get(string file)
         {
-            string s;
-            switch (map)
+            //file = Path.Combine(Directory.GetCurrentDirectory(), file);
+
+            if (!File.Exists(file))
             {
-                case LiveCharts.Maps.Maps.World:
-                    s = "world.xml";
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException("map");
+                throw new FileNotFoundException(String.Format("This file {0} was not found.", file));
             }
 
-            if (s == null) throw new LiveChartsException("Map not found");
-        
-            var svgMap = new SvgMap
+            var svgMap = new LvcMap
             {
                 DesiredHeight = 600,
                 DesiredWidth = 800,
                 Data = new List<MapData>()
             };
 
-            using (var reader = XmlReader.Create(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Maps\" + s)))
+            using (var reader = XmlReader.Create(file, new XmlReaderSettings {IgnoreComments = true}))
             {
                 while (reader.Read())
                 {
-                    if (reader.Name == "livecharts:params")
+                    if (reader.Name == "Height") svgMap.DesiredHeight = double.Parse(reader.ReadInnerXml());
+                    if (reader.Name == "Width") svgMap.DesiredWidth = double.Parse(reader.ReadInnerXml());
+                    if (reader.Name == "MapShape")
                     {
-                        var @params = XNode.ReadFrom(reader) as XElement;
-                        if (@params == null) continue;
-                        svgMap.DesiredHeight = double.Parse((string) @params.Attribute("desiredheight"));
-                        svgMap.DesiredWidth = double.Parse((string) @params.Attribute("desiredwidth"));
+                        var p = new MapData
+                        {
+                            LvcMap = svgMap
+                        };
+                        reader.Read();
+                        while (reader.NodeType != XmlNodeType.EndElement)
+                        {
+                            if (reader.NodeType != XmlNodeType.Element) reader.Read();
+                            if (reader.Name == "Id") p.Id = reader.ReadInnerXml();
+                            if (reader.Name == "Name") p.Name = reader.ReadInnerXml();
+                            if (reader.Name == "Path") p.Data = reader.ReadInnerXml();
+                        }
+                        svgMap.Data.Add(p);
                     }
-
-                    if (reader.NodeType != XmlNodeType.Element || reader.Name != "path") continue;
-
-                    var el = XNode.ReadFrom(reader) as XElement;
-                    if (el == null) continue;
-                    var p = new MapData
-                    {
-                        Id = (string) el.Attribute("id"),
-                        Name = (string) el.Attribute("title"),
-                        Data = (string) el.Attribute("d"),
-                        SvgMap = svgMap
-                    };
-                    svgMap.Data.Add(p);
                 }
             }
             return svgMap;

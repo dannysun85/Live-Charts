@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,9 @@ namespace LiveCharts.Wpf
             SetCurrentValue(SeriesProperty, new SeriesCollection());
         }
 
+        /// <summary>
+        /// The inner radius property
+        /// </summary>
         public static readonly DependencyProperty InnerRadiusProperty = DependencyProperty.Register(
             "InnerRadius", typeof (double), typeof (PieChart), new PropertyMetadata(0d, CallChartUpdater()));
         /// <summary>
@@ -57,6 +60,9 @@ namespace LiveCharts.Wpf
             set { SetValue(InnerRadiusProperty, value); }
         }
 
+        /// <summary>
+        /// The starting rotation angle property
+        /// </summary>
         public static readonly DependencyProperty StartingRotationAngleProperty = DependencyProperty.Register(
             "StartingRotationAngle", typeof (double), typeof (PieChart), new PropertyMetadata(45d, CallChartUpdater()));
         /// <summary>
@@ -68,6 +74,9 @@ namespace LiveCharts.Wpf
             set { SetValue(StartingRotationAngleProperty, value); }
         }
 
+        /// <summary>
+        /// The hover push out property
+        /// </summary>
         public static readonly DependencyProperty HoverPushOutProperty = DependencyProperty.Register(
             "HoverPushOut", typeof (double), typeof (PieChart), new PropertyMetadata(5d));
         /// <summary>
@@ -79,7 +88,12 @@ namespace LiveCharts.Wpf
             set { SetValue(HoverPushOutProperty, value); }
         }
 
-        protected override Point GetTooltipPosition(ChartPoint senderPoint)
+        /// <summary>
+        /// Gets the tooltip position.
+        /// </summary>
+        /// <param name="senderPoint">The sender point.</param>
+        /// <returns></returns>
+        protected internal override Point GetTooltipPosition(ChartPoint senderPoint)
         {
             var pieSlice = ((PiePointView) senderPoint.View).Slice;
 

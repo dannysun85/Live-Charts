@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -21,6 +21,7 @@
 //SOFTWARE.
 
 using System;
+using System.ComponentModel;
 using System.Windows;
 using LiveCharts.Charts;
 using LiveCharts.Definitions.Charts;
@@ -41,16 +42,22 @@ namespace LiveCharts.Wpf
             var freq = DisableAnimations ? TimeSpan.FromMilliseconds(10) : AnimationsSpeed;
             var updater = new Components.ChartUpdater(freq);
             ChartCoreModel = new CartesianChartCore(this, updater);
-            
-            SetCurrentValue(SeriesProperty, new SeriesCollection());
+
+            SetCurrentValue(SeriesProperty,
+                DesignerProperties.GetIsInDesignMode(this)
+                    ? GetDesignerModeCollection()
+                    : new SeriesCollection());
 
             SetCurrentValue(VisualElementsProperty, new VisualElementsCollection());
         }
 
-
+        /// <summary>
+        /// The visual elements property
+        /// </summary>
         public static readonly DependencyProperty VisualElementsProperty = DependencyProperty.Register(
             "VisualElements", typeof (VisualElementsCollection), typeof (CartesianChart),
-            new PropertyMetadata(default(VisualElementsCollection)));
+            new PropertyMetadata(default(VisualElementsCollection), OnVisualCollectionChanged));
+
         /// <summary>
         /// Gets or sets the collection of visual elements in the chart, a visual element display another UiElement in the chart.
         /// </summary>
@@ -58,6 +65,13 @@ namespace LiveCharts.Wpf
         {
             get { return (VisualElementsCollection) GetValue(VisualElementsProperty); }
             set { SetValue(VisualElementsProperty, value); }
+        }
+
+        private static void OnVisualCollectionChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs dependencyPropertyChangedEventArgs)
+        {
+            var chart = (CartesianChart)dependencyObject;
+
+            if (chart.VisualElements != null) chart.VisualElements.Chart = chart.Model;
         }
     }
 }

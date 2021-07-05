@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,12 @@ namespace LiveCharts.Wpf
         /// </summary>
         public static Geometry Circle
         {
-            get { return Geometry.Parse("M 0,0 A 180,180 180 1 1 1,1 Z"); }
+            get
+            {
+                var g = Geometry.Parse("M 0,0 A 180,180 180 1 1 1,1 Z");
+                g.Freeze();
+                return g;
+            }
         }
 
         /// <summary>
@@ -50,23 +55,51 @@ namespace LiveCharts.Wpf
         /// </summary>
         public static Geometry Square
         {
-            get { return Geometry.Parse("M 1,1 h -2 v -2 h 2 z"); }
+            get
+            {
+                var g = Geometry.Parse("M 1,1 h -2 v -2 h 2 z");
+                g.Freeze();
+                return g;
+            }
         }
 
         /// <summary>
-        /// Returns a diamond property
+        /// Returns a diamond geometry
         /// </summary>
         public static Geometry Diamond
         {
-            get { return Geometry.Parse("M 1,0 L 2,1  1,2  0,1 z"); }
+            get
+            {
+                var g = Geometry.Parse("M 1,0 L 2,1  1,2  0,1 z");
+                g.Freeze();
+                return g;
+            }
         }
 
         /// <summary>
         /// Returns a triangle geometry
         /// </summary>
-        public static Geometry Trangle
+        public static Geometry Triangle
         {
-            get { return Geometry.Parse("M 0,1 l 1,1 h -2 Z"); }
+            get
+            {
+                var g = Geometry.Parse("M 0,1 l 1,1 h -2 Z");
+                g.Freeze();
+                return g;
+            }
+        }
+
+        /// <summary>
+        /// Returns a cross geometry
+        /// </summary>
+        public static Geometry Cross
+        {
+            get
+            {
+                var g = Geometry.Parse("M0,0 L1,1 M0,1 l1,-1");
+                g.Freeze();
+                return g;
+            }
         }
     }
 }

@@ -227,3 +227,16 @@ ModelManifest.xml
 /VirtualizedValues/VirtualizedValues.csproj
 /VirtualizedValues/Class1.cs
 /VirtualizedValues/Properties/AssemblyInfo.cs
+/binaries
+/binaries.zip
+/internals.txt
+/Autofac.dll
+/Cake.Common.dll
+/Cake.Core.dll
+/Cake.exe
+/Cake.NuGet.dll
+/LICENSE
+/Mono.CSharp.dll
+/NuGet.Core.dll
+/Roslyn.Compilers.CSharp.dll
+/Roslyn.Compilers.dll

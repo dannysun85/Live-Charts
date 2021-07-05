@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -23,13 +23,11 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using LiveCharts.Definitions.Points;
 using LiveCharts.Definitions.Series;
 using LiveCharts.Dtos;
-using LiveCharts.Helpers;
 using LiveCharts.SeriesAlgorithms;
 using LiveCharts.Wpf.Charts.Base;
 using LiveCharts.Wpf.Points;
@@ -70,6 +68,9 @@ namespace LiveCharts.Wpf
 
         #region Properties
 
+        /// <summary>
+        /// The maximum row height property
+        /// </summary>
         public static readonly DependencyProperty MaxRowHeightProperty = DependencyProperty.Register(
             "MaxRowHeight", typeof (double), typeof (StackedRowSeries), new PropertyMetadata(default(double)));
         /// <summary>
@@ -81,6 +82,9 @@ namespace LiveCharts.Wpf
             set { SetValue(MaxRowHeightProperty, value); }
         }
 
+        /// <summary>
+        /// The row padding property
+        /// </summary>
         public static readonly DependencyProperty RowPaddingProperty = DependencyProperty.Register(
             "RowPadding", typeof (double), typeof (StackedRowSeries), new PropertyMetadata(default(double)));
         /// <summary>
@@ -92,6 +96,9 @@ namespace LiveCharts.Wpf
             set { SetValue(RowPaddingProperty, value); }
         }
 
+        /// <summary>
+        /// The stack mode property
+        /// </summary>
         public static readonly DependencyProperty StackModeProperty = DependencyProperty.Register(
             "StackMode", typeof (StackMode), typeof (StackedRowSeries), new PropertyMetadata(default(StackMode)));
         /// <summary>
@@ -103,13 +110,48 @@ namespace LiveCharts.Wpf
             set { SetValue(StackModeProperty, value); }
         }
 
+        /// <summary>
+        /// The labels position property
+        /// </summary>
+        public static readonly DependencyProperty LabelsPositionProperty = DependencyProperty.Register(
+            "LabelsPosition", typeof(BarLabelPosition), typeof(StackedRowSeries),
+            new PropertyMetadata(BarLabelPosition.Parallel, CallChartUpdater()));
+        /// <summary>
+        /// Gets or sets where the label is placed
+        /// </summary>
+        public BarLabelPosition LabelsPosition
+        {
+            get { return (BarLabelPosition)GetValue(LabelsPositionProperty); }
+            set { SetValue(LabelsPositionProperty, value); }
+        }
+
+        /// <summary>
+        /// The Grouping property
+        /// </summary>
+        public object Grouping
+        {
+            get { return (object)GetValue(GroupingProperty); }
+            set { SetValue(GroupingProperty, value); }
+        }
+
+        /// <summary>
+        /// Gets or sets which columns are grouped together
+        /// </summary>
+        public static readonly DependencyProperty GroupingProperty =
+            DependencyProperty.Register("Grouping", typeof(object), typeof(StackedRowSeries), new PropertyMetadata(null));
         #endregion
 
         #region Overridden Methods
 
-        public override IChartPointView GetPointView(IChartPointView view, ChartPoint point, string label)
+        /// <summary>
+        /// Gets the view of a given point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="label"></param>
+        /// <returns></returns>
+        public override IChartPointView GetPointView(ChartPoint point, string label)
         {
-            var pbv = (view as RowPointView);
+            var pbv = (RowPointView) point.View;
 
             if (pbv == null)
             {
@@ -117,22 +159,8 @@ namespace LiveCharts.Wpf
                 {
                     IsNew = true,
                     Rectangle = new Rectangle(),
-                    Data = new CoreRectangle(),
-                    LabelInside = true
+                    Data = new CoreRectangle()
                 };
-
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(FillProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(StrokeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeThicknessProperty,
-                    new Binding {Path = new PropertyPath(StrokeThicknessProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Rectangle, Shape.StrokeDashArrayProperty,
-                    new Binding {Path = new PropertyPath(StrokeDashArrayProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Rectangle, Panel.ZIndexProperty,
-                    new Binding {Path = new PropertyPath(Panel.ZIndexProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Rectangle, VisibilityProperty,
-                    new Binding { Path = new PropertyPath(VisibilityProperty), Source = this });
 
                 Model.Chart.View.AddToDrawMargin(pbv.Rectangle);
             }
@@ -147,6 +175,13 @@ namespace LiveCharts.Wpf
                     .EnsureElementBelongsToCurrentDrawMargin(pbv.DataLabel);
             }
 
+            pbv.Rectangle.Fill = Fill;
+            pbv.Rectangle.StrokeThickness = StrokeThickness;
+            pbv.Rectangle.Stroke = Stroke;
+            pbv.Rectangle.StrokeDashArray = StrokeDashArray;
+            pbv.Rectangle.Visibility = Visibility;
+            Panel.SetZIndex(pbv.Rectangle, Panel.GetZIndex(this));
+
             if (Model.Chart.RequiresHoverShape && pbv.HoverShape == null)
             {
                 pbv.HoverShape = new Rectangle
@@ -156,8 +191,6 @@ namespace LiveCharts.Wpf
                 };
 
                 Panel.SetZIndex(pbv.HoverShape, int.MaxValue);
-                BindingOperations.SetBinding(pbv.HoverShape, VisibilityProperty,
-                    new Binding {Path = new PropertyPath(VisibilityProperty), Source = this});
 
                 var wpfChart = (Chart)Model.Chart.View;
                 wpfChart.AttachHoverableEventTo(pbv.HoverShape);
@@ -165,15 +198,27 @@ namespace LiveCharts.Wpf
                 Model.Chart.View.AddToDrawMargin(pbv.HoverShape);
             }
 
-            if (DataLabels && pbv.DataLabel == null)
-            {
-                pbv.DataLabel = BindATextBlock(0);
-                Panel.SetZIndex(pbv.DataLabel, int.MaxValue - 1);
+            if (pbv.HoverShape != null) pbv.HoverShape.Visibility = Visibility;
 
-                Model.Chart.View.AddToDrawMargin(pbv.DataLabel);
+            if (DataLabels)
+            {
+                pbv.DataLabel = UpdateLabelContent(new DataLabelViewModel
+                {
+                    FormattedText = label,
+                    Point = point
+                }, pbv.DataLabel);
             }
 
-            if (pbv.DataLabel != null) pbv.DataLabel.Text = label;
+            if (!DataLabels && pbv.DataLabel != null)
+            {
+                Model.Chart.View.RemoveFromDrawMargin(pbv.DataLabel);
+                pbv.DataLabel = null;
+            }
+
+            if (point.Stroke != null) pbv.Rectangle.Stroke = (Brush)point.Stroke;
+            if (point.Fill != null) pbv.Rectangle.Fill = (Brush)point.Fill;
+
+            pbv.LabelPosition = LabelsPosition;
 
             return pbv;
         }
@@ -186,7 +231,7 @@ namespace LiveCharts.Wpf
         {
             SetCurrentValue(StrokeThicknessProperty, 0d);
             SetCurrentValue(MaxRowHeightProperty, 35d);
-            SetCurrentValue(RowPaddingProperty, 5d);
+            SetCurrentValue(RowPaddingProperty, 2d);
             SetCurrentValue(ForegroundProperty, Brushes.White);
 
             Func<ChartPoint, string> defaultLabel = x =>  Model.CurrentXAxis.GetFormatter()(x.X);

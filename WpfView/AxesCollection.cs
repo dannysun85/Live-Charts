@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@
 
 using System.Collections.Generic;
 using LiveCharts.Helpers;
+using LiveCharts.Wpf.Charts.Base;
 
 namespace LiveCharts.Wpf
 {
@@ -35,16 +36,28 @@ namespace LiveCharts.Wpf
         /// </summary>
         public AxesCollection()
         {
-            CollectionChanged += OnCollectionChanged;
+            NoisyCollectionChanged += OnNoisyCollectionChanged;
         }
 
-        private static void OnCollectionChanged(IEnumerable<Axis> oldItems, IEnumerable<Axis> newItems)
+        /// <summary>
+        /// Gets the chart that owns the series.
+        /// </summary>
+        /// <value>
+        /// The chart.
+        /// </value>
+        public Chart Chart { get; internal set; }
+
+        private void OnNoisyCollectionChanged(IEnumerable<Axis> oldItems, IEnumerable<Axis> newItems)
         {
+            if(Chart != null && Chart.Model != null)
+                Chart.Model.Updater.Run();
+
             if (oldItems == null) return;
 
             foreach (var oldAxis in oldItems)
             {
                 oldAxis.Clean();
+                if (oldAxis.Model == null) continue;
                 var chart = oldAxis.Model.Chart.View;
                 if (chart == null) continue;
                 chart.RemoveFromView(oldAxis);

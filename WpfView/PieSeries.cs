@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//Copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -23,12 +23,9 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Media;
-using System.Windows.Shapes;
 using LiveCharts.Definitions.Points;
 using LiveCharts.Definitions.Series;
-using LiveCharts.Helpers;
 using LiveCharts.SeriesAlgorithms;
 using LiveCharts.Wpf.Charts.Base;
 using LiveCharts.Wpf.Points;
@@ -69,8 +66,11 @@ namespace LiveCharts.Wpf
 
         #region Properties
 
+        /// <summary>
+        /// The push out property
+        /// </summary>
         public static readonly DependencyProperty PushOutProperty = DependencyProperty.Register(
-            "PushOut", typeof (double), typeof (PieSeries), new PropertyMetadata(default(double)));
+            "PushOut", typeof (double), typeof (PieSeries), new PropertyMetadata(default(double), CallChartUpdater()));
         /// <summary>
         /// Gets or sets the slice push out, this property highlights the slice
         /// </summary>
@@ -79,13 +79,38 @@ namespace LiveCharts.Wpf
             get { return (double) GetValue(PushOutProperty); }
             set { SetValue(PushOutProperty, value); }
         }
+
+        /// <summary>
+        /// The label position property
+        /// </summary>
+        public static readonly DependencyProperty LabelPositionProperty = DependencyProperty.Register(
+            "LabelPosition", typeof(PieLabelPosition), typeof(PieSeries), 
+            new PropertyMetadata(PieLabelPosition.InsideSlice, CallChartUpdater()));
+        /// <summary>
+        /// Gets or sets the label position.
+        /// </summary>
+        /// <value>
+        /// The label position.
+        /// </value>
+        public PieLabelPosition LabelPosition
+        {
+            get { return (PieLabelPosition) GetValue(LabelPositionProperty); }
+            set { SetValue(LabelPositionProperty, value); }
+        }
+
         #endregion
 
         #region Overridden Methods
 
-        public override IChartPointView GetPointView(IChartPointView view, ChartPoint point, string label)
+        /// <summary>
+        /// Gets the view of a given point
+        /// </summary>
+        /// <param name="point"></param>
+        /// <param name="label"></param>
+        /// <returns></returns>
+        public override IChartPointView GetPointView(ChartPoint point, string label)
         {
-            var pbv = (view as PiePointView);
+            var pbv = (PiePointView) point.View;
 
             if (pbv == null)
             {
@@ -94,22 +119,6 @@ namespace LiveCharts.Wpf
                     IsNew = true,
                     Slice = new PieSlice()
                 };
-
-                BindingOperations.SetBinding(pbv.Slice, Shape.FillProperty,
-                    new Binding { Path = new PropertyPath(FillProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Slice, Shape.StrokeProperty,
-                    new Binding { Path = new PropertyPath(StrokeProperty), Source = this });
-                BindingOperations.SetBinding(pbv.Slice, Shape.StrokeThicknessProperty,
-                    new Binding {Path = new PropertyPath(StrokeThicknessProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Slice, Shape.StrokeDashArrayProperty,
-                    new Binding {Path = new PropertyPath(StrokeDashArrayProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Slice, PieSlice.PushOutProperty,
-                    new Binding {Path = new PropertyPath(PushOutProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Slice, Panel.ZIndexProperty,
-                    new Binding {Path = new PropertyPath(Panel.ZIndexProperty), Source = this});
-                BindingOperations.SetBinding(pbv.Slice, VisibilityProperty,
-                    new Binding {Path = new PropertyPath(VisibilityProperty), Source = this});
-
                 Model.Chart.View.AddToDrawMargin(pbv.Slice);
             }
             else
@@ -123,6 +132,14 @@ namespace LiveCharts.Wpf
                     .EnsureElementBelongsToCurrentDrawMargin(pbv.DataLabel);
             }
 
+            pbv.Slice.Fill = Fill;
+            pbv.Slice.Stroke = Stroke;
+            pbv.Slice.StrokeThickness = StrokeThickness;
+            pbv.Slice.StrokeDashArray = StrokeDashArray;
+            pbv.Slice.PushOut = PushOut;
+            pbv.Slice.Visibility = Visibility;
+            Panel.SetZIndex(pbv.Slice, Panel.GetZIndex(this));
+            
             if (Model.Chart.RequiresHoverShape && pbv.HoverShape == null)
             {
                 pbv.HoverShape = new PieSlice
@@ -132,8 +149,6 @@ namespace LiveCharts.Wpf
                 };
 
                 Panel.SetZIndex(pbv.HoverShape, int.MaxValue);
-                BindingOperations.SetBinding(pbv.HoverShape, VisibilityProperty,
-                    new Binding {Path = new PropertyPath(VisibilityProperty), Source = this});
 
                 var wpfChart = (Chart)Model.Chart.View;
                 wpfChart.AttachHoverableEventTo(pbv.HoverShape);
@@ -141,17 +156,27 @@ namespace LiveCharts.Wpf
                 Model.Chart.View.AddToDrawMargin(pbv.HoverShape);
             }
 
-            if (DataLabels && pbv.DataLabel == null)
-            {
-                pbv.DataLabel = BindATextBlock(0);
-                Panel.SetZIndex(pbv.DataLabel, int.MaxValue - 1);
+            if (pbv.HoverShape != null) pbv.HoverShape.Visibility = Visibility;
 
-                Model.Chart.View.AddToDrawMargin(pbv.DataLabel);
+            if (DataLabels)
+            {
+                pbv.DataLabel = UpdateLabelContent(new DataLabelViewModel
+                {
+                    FormattedText = label,
+                    Point = point
+                }, pbv.DataLabel);
             }
 
-            if (pbv.DataLabel != null) pbv.DataLabel.Text = label;
+            if (!DataLabels && pbv.DataLabel != null)
+            {
+                Model.Chart.View.RemoveFromDrawMargin(pbv.DataLabel);
+                pbv.DataLabel = null;
+            }
 
-            pbv.OriginalPushOut = pbv.Slice.PushOut;
+            if (point.Stroke != null) pbv.Slice.Stroke = (Brush)point.Stroke;
+            if (point.Fill != null) pbv.Slice.Fill = (Brush)point.Fill;
+
+            pbv.OriginalPushOut  = PushOut;
 
             return pbv;
         }

@@ -1,6 +1,6 @@
 ﻿//The MIT License(MIT)
 
-//copyright(c) 2016 Alberto Rodriguez
+//Copyright(c) 2016 Alberto Rodriguez & LiveCharts Contributors
 
 //Permission is hereby granted, free of charge, to any person obtaining a copy
 //of this software and associated documentation files (the "Software"), to deal
@@ -28,17 +28,10 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace LiveCharts.Wpf
 {
-
-    public interface IChartTooltip : INotifyPropertyChanged
-    {
-        TooltipData Data { get; set; }
-        TooltipSelectionMode? SelectionMode { get; set; }
-        bool IsWrapped { get; set; }
-    }
-
     /// <summary>
     /// The Default Tooltip control, by default any chart that requires a tooltip will create a new instance of this class.
     /// </summary>
@@ -52,24 +45,75 @@ namespace LiveCharts.Wpf
         public DefaultTooltip()
         {
             InitializeComponent();
-
-            SetValue(ForegroundProperty, Brushes.White);
-            SetValue(CornerRadiusProperty, 4d);
-
+            
             DataContext = this;
         }
 
+        /// <summary>
+        /// Initializes the <see cref="DefaultTooltip"/> class.
+        /// </summary>
+        static DefaultTooltip()
+        {
+            BackgroundProperty.OverrideMetadata(
+                typeof(DefaultTooltip), new FrameworkPropertyMetadata(new SolidColorBrush(Color.FromArgb(140, 255, 255, 255))));
+            PaddingProperty.OverrideMetadata(
+                typeof(DefaultTooltip), new FrameworkPropertyMetadata(new Thickness(10, 5, 10, 5)));
+            EffectProperty.OverrideMetadata(
+                typeof(DefaultTooltip),
+                new FrameworkPropertyMetadata(new DropShadowEffect {BlurRadius = 3, Color = Color.FromRgb(50,50,50), Opacity = .2}));
+        }
+
+        /// <summary>
+        /// The show title property
+        /// </summary>
+        public static readonly DependencyProperty ShowTitleProperty = DependencyProperty.Register(
+            "ShowTitle", typeof(bool), typeof(DefaultTooltip), new PropertyMetadata(true));
+        /// <summary>
+        /// Gets or sets a value indicating whether the tooltip should show the shared coordinate value in the current tooltip data.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [show title]; otherwise, <c>false</c>.
+        /// </value>
+        public bool ShowTitle
+        {
+            get { return (bool) GetValue(ShowTitleProperty); }
+            set { SetValue(ShowTitleProperty, value); }
+        }
+
+        /// <summary>
+        /// The show series property
+        /// </summary>
+        public static readonly DependencyProperty ShowSeriesProperty = DependencyProperty.Register(
+            "ShowSeries", typeof(bool), typeof(DefaultTooltip), new PropertyMetadata(true));
+        /// <summary>
+        /// Gets or sets a value indicating whether should show series name and color.
+        /// </summary>
+        /// <value>
+        ///   <c>true</c> if [show series]; otherwise, <c>false</c>.
+        /// </value>
+        public bool ShowSeries
+        {
+            get { return (bool) GetValue(ShowSeriesProperty); }
+            set { SetValue(ShowSeriesProperty, value); }
+        }
+
+        /// <summary>
+        /// The corner radius property
+        /// </summary>
         public static readonly DependencyProperty CornerRadiusProperty = DependencyProperty.Register(
-            "CornerRadius", typeof (double), typeof (DefaultTooltip), new PropertyMetadata(2d));
+            "CornerRadius", typeof (CornerRadius), typeof (DefaultTooltip), new PropertyMetadata(new CornerRadius(4)));
         /// <summary>
         /// Gets or sets the corner radius of the tooltip
         /// </summary>
-        public double CornerRadius
+        public CornerRadius CornerRadius
         {
-            get { return (double) GetValue(CornerRadiusProperty); }
+            get { return (CornerRadius) GetValue(CornerRadiusProperty); }
             set { SetValue(CornerRadiusProperty, value); }
         }
 
+        /// <summary>
+        /// The selection mode property
+        /// </summary>
         public static readonly DependencyProperty SelectionModeProperty = DependencyProperty.Register(
             "SelectionMode", typeof (TooltipSelectionMode?), typeof (DefaultTooltip),
             new PropertyMetadata(null));
@@ -82,6 +126,9 @@ namespace LiveCharts.Wpf
             set { SetValue(SelectionModeProperty, value); }
         }
 
+        /// <summary>
+        /// The bullet size property
+        /// </summary>
         public static readonly DependencyProperty BulletSizeProperty = DependencyProperty.Register(
             "BulletSize", typeof (double), typeof (DefaultTooltip), new PropertyMetadata(15d));
         /// <summary>
@@ -93,6 +140,9 @@ namespace LiveCharts.Wpf
             set { SetValue(BulletSizeProperty, value); }
         }
 
+        /// <summary>
+        /// The is wrapped property
+        /// </summary>
         public static readonly DependencyProperty IsWrappedProperty = DependencyProperty.Register(
             "IsWrapped", typeof (bool), typeof (DefaultTooltip), new PropertyMetadata(default(bool)));
         /// <summary>
@@ -105,6 +155,12 @@ namespace LiveCharts.Wpf
             set { SetValue(IsWrappedProperty, value); }
         }
 
+        /// <summary>
+        /// Gets or sets the data.
+        /// </summary>
+        /// <value>
+        /// The data.
+        /// </value>
         public TooltipData Data
         {
             get { return _data; }
@@ -115,8 +171,15 @@ namespace LiveCharts.Wpf
             }
         }
 
+        /// <summary>
+        /// Occurs when [property changed].
+        /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
 
+        /// <summary>
+        /// Called when [property changed].
+        /// </summary>
+        /// <param name="propertyName">Name of the property.</param>
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
             if (PropertyChanged != null)
@@ -124,8 +187,22 @@ namespace LiveCharts.Wpf
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="System.Windows.Data.IValueConverter" />
     public class SharedConverter : IValueConverter
     {
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value produced by the binding source.</param>
+        /// <param name="targetType">The type of the binding target property.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var v = value as TooltipData;
@@ -139,14 +216,39 @@ namespace LiveCharts.Wpf
                 : v.YFormatter(v.SharedValue ?? 0);
         }
 
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value that is produced by the binding target.</param>
+        /// <param name="targetType">The type to convert to.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
+        /// <exception cref="System.NotImplementedException"></exception>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="System.Windows.Data.IValueConverter" />
     public class ChartPointLabelConverter : IValueConverter
     {
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value produced by the binding source.</param>
+        /// <param name="targetType">The type of the binding target property.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var chartPoint = value as ChartPoint;
@@ -156,14 +258,39 @@ namespace LiveCharts.Wpf
             return chartPoint.SeriesView.LabelPoint(chartPoint);
         }
 
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value that is produced by the binding target.</param>
+        /// <param name="targetType">The type to convert to.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
+        /// <exception cref="System.NotImplementedException"></exception>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="System.Windows.Data.IValueConverter" />
     public class ParticipationVisibilityConverter : IValueConverter
     {
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value produced by the binding source.</param>
+        /// <param name="targetType">The type of the binding target property.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var v = value as TooltipData;
@@ -172,26 +299,69 @@ namespace LiveCharts.Wpf
             return v.Points.Any(x => x.ChartPoint.Participation > 0) ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        /// <summary>
+        /// Converts a value.
+        /// </summary>
+        /// <param name="value">The value that is produced by the binding target.</param>
+        /// <param name="targetType">The type to convert to.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value. If the method returns null, the valid null value is used.
+        /// </returns>
+        /// <exception cref="System.NotImplementedException"></exception>
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
     }
 
-    public class SharedVisibilityConverter : IValueConverter
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <seealso cref="System.Windows.Data.IMultiValueConverter" />
+    public class SharedVisibilityConverter : IMultiValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        /// <summary>
+        /// Converts source values to a value for the binding target. The data binding engine calls this method when it propagates the values from source bindings to the binding target.
+        /// </summary>
+        /// <param name="values">The array of values that the source bindings in the <see cref="T:System.Windows.Data.MultiBinding" /> produces. The value <see cref="F:System.Windows.DependencyProperty.UnsetValue" /> indicates that the source binding has no value to provide for conversion.</param>
+        /// <param name="targetType">The type of the binding target property.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// A converted value.If the method returns null, the valid null value is used.A return value of <see cref="T:System.Windows.DependencyProperty" />.<see cref="F:System.Windows.DependencyProperty.UnsetValue" /> indicates that the converter did not produce a value, and that the binding will use the <see cref="P:System.Windows.Data.BindingBase.FallbackValue" /> if it is available, or else will use the default value.A return value of <see cref="T:System.Windows.Data.Binding" />.<see cref="F:System.Windows.Data.Binding.DoNothing" /> indicates that the binding does not transfer the value or use the <see cref="P:System.Windows.Data.BindingBase.FallbackValue" /> or the default value.
+        /// </returns>
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
-            var v = value as TooltipData;
+            var v = values[0] as TooltipData;
+            var show = values[1] as bool?;
 
-            if (v == null) return null;
+            if (v == null || show == null) return null;
 
-            if (v.SelectionMode == TooltipSelectionMode.OnlySender) return Visibility.Collapsed;
+            if (show.Value == false)
+                return Visibility.Collapsed;
 
-            return v.SharedValue == null ? Visibility.Collapsed : Visibility.Visible;
+            if (v.SelectionMode == TooltipSelectionMode.OnlySender)
+                return Visibility.Collapsed;
+
+            return v.SharedValue == null
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        /// <summary>
+        /// Converts a binding target value to the source binding values.
+        /// </summary>
+        /// <param name="value">The value that the binding target produces.</param>
+        /// <param name="targetTypes">The array of types to convert to. The array length indicates the number and types of values that are suggested for the method to return.</param>
+        /// <param name="parameter">The converter parameter to use.</param>
+        /// <param name="culture">The culture to use in the converter.</param>
+        /// <returns>
+        /// An array of values that have been converted from the target value back to the source values.
+        /// </returns>
+        /// <exception cref="System.NotImplementedException"></exception>
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
@@ -205,23 +375,30 @@ namespace LiveCharts.Wpf
         /// <summary>
         /// The current X formatter
         /// </summary>
-        public Func<double, string> XFormatter { get; set; }
+        public Func<double, string> XFormatter { get; internal set; }
         /// <summary>
         /// The current Y formatter
         /// </summary>
-        public Func<double, string> YFormatter { get; set; }
+        public Func<double, string> YFormatter { get; internal set; }
         /// <summary>
         /// Shared coordinate value between points
         /// </summary>
-        public double? SharedValue { get; set; }
+        public double? SharedValue { get; internal set; }
+        /// <summary>
+        /// Gets or sets the series that fired the tooltip.
+        /// </summary>
+        /// <value>
+        /// The sender series.
+        /// </value>
+        public Series SenderSeries { get; internal set; }
         /// <summary>
         /// Current selection mode
         /// </summary>
-        public TooltipSelectionMode SelectionMode { get; set; }
+        public TooltipSelectionMode SelectionMode { get; internal set; }
         /// <summary>
         /// collection of points
         /// </summary>
-        public List<DataPointViewModel> Points { get; set; }
+        public List<DataPointViewModel> Points { get; internal set; }
     }
 
     /// <summary>
